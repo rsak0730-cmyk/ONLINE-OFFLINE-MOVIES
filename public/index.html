@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SyncBeat - Unified Hub</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body, html { width: 100vw; height: 100vh; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        #slider { display: flex; width: 300vw; height: 100vh; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); will-change: transform; }
+        .frame-wrapper { width: 100vw; height: 100vh; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; background: #000; }
+
+        /* Smaller, App-Matched iOS Tab Bar */
+        .tab-bar {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(0);
+            width: 90%; max-width: 340px; height: 60px;
+            background: rgba(18, 18, 22, 0.85); backdrop-filter: blur(25px) saturate(200%); -webkit-backdrop-filter: blur(25px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 30px;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 6px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+            z-index: 10000; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+        }
+
+        /* Auto-Hide when music plays */
+        .tab-bar.hide { transform: translateX(-50%) translateY(120px); opacity: 0; pointer-events: none; }
+
+        .indicator {
+            position: absolute; top: 6px; bottom: 6px; width: calc(33.333% - 8px); left: 6px;
+            background: rgba(239, 68, 68, 0.25); border-radius: 24px;
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1), background 0.3s ease; z-index: 1;
+        }
+
+        .tab-btn {
+            flex: 1; height: 100%; border: none; background: transparent; color: rgba(255, 255, 255, 0.4);
+            font-size: 10px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+            z-index: 2; cursor: pointer; transition: color 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px; position: relative;
+        }
+
+        .tab-btn i { font-size: 18px; transition: transform 0.3s cubic-bezier(0.2, 2, 0.4, 1); }
+        .tab-btn.active { color: #fff; }
+        .tab-btn.active i { transform: translateY(-2px) scale(1.1); }
+        
+        .tab-btn .lock { position: absolute; top: 6px; right: 18px; font-size: 9px; color: #ef4444; opacity: 0; transition: 0.3s ease; }
+        .tab-bar.locked .tab-btn:not(.active) .lock { opacity: 1; }
+        .tab-bar.locked { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 20px rgba(239, 68, 68, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2); }
+
+        /* Lock Toast */
+        #toast {
+            position: fixed; top: 25px; left: 50%; transform: translateX(-50%) translateY(-120px);
+            background: rgba(20, 8, 8, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(239, 68, 68, 0.6);
+            color: #fecaca; padding: 12px 20px; border-radius: 20px; font-size: 12px; font-weight: 800;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; gap: 8px;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); pointer-events: none; text-align: center;
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+
+    <div id="toast"><i class="fa-solid fa-lock" style="color: #ef4444;"></i> <span id="toastMsg"></span></div>
+
+    <div id="slider">
+        <div class="frame-wrapper"><iframe src="./movies.html" allow="autoplay; fullscreen"></iframe></div>
+        <div class="frame-wrapper"><iframe src="./golden.html" allow="autoplay; fullscreen"></iframe></div>
+        <div class="frame-wrapper"><iframe src="./audio.html" allow="autoplay; fullscreen"></iframe></div>
+    </div>
+
+    <nav class="tab-bar" id="tabBar">
+        <div class="indicator" id="indicator"></div>
+        <button class="tab-btn active" onclick="switchTab(0, '#ef4444')">
+            <i class="fa-solid fa-film"></i><span>Movies</span><i class="fa-solid fa-lock lock"></i>
+        </button>
+        <button class="tab-btn" onclick="switchTab(1, '#fbbf24')">
+            <i class="fa-brands fa-youtube"></i><span>Golden</span><i class="fa-solid fa-lock lock"></i>
+        </button>
+        <button class="tab-btn" onclick="switchTab(2, '#a855f7')">
+            <i class="fa-solid fa-compact-disc"></i><span>Audio</span><i class="fa-solid fa-lock lock"></i>
+        </button>
+    </nav>
+
+    <script>
+        let currentTab = 0;
+        let activeRoomTab = null;
+        let activeRoomCode = null;
+
+        const slider = document.getElementById('slider');
+        const indicator = document.getElementById('indicator');
+        const tabBar = document.getElementById('tabBar');
+        const toast = document.getElementById('toast');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+
+        // Master Control for Locking and Auto-Hiding
+        window.addEventListener('message', (e) => {
+            const data = e.data;
+            if (data.sender !== 'syncbeat') return;
+
+            if (data.action === 'ROOM_OPENED') {
+                activeRoomTab = data.tab;
+                activeRoomCode = data.code;
+                tabBar.classList.add('locked');
+            } else if (data.action === 'ROOM_CLOSED') {
+                activeRoomTab = null;
+                activeRoomCode = null;
+                tabBar.classList.remove('locked');
+                tabBar.classList.remove('hide'); // Force show on close
+            } else if (data.action === 'MEDIA_PLAYING') {
+                tabBar.classList.add('hide');
+            } else if (data.action === 'MEDIA_PAUSED') {
+                tabBar.classList.remove('hide');
+            }
+        });
+
+        // Click screen anywhere to briefly reveal tab bar if hidden
+        window.addEventListener('click', () => {
+            if (tabBar.classList.contains('hide')) {
+                tabBar.classList.remove('hide');
+                setTimeout(() => { if (activeRoomTab !== null) tabBar.classList.add('hide'); }, 3000);
+            }
+        });
+
+        function switchTab(index, color) {
+            if (activeRoomTab !== null && activeRoomTab !== index) {
+                const names = ['Movies', 'Golden Room', 'Audio Sync'];
+                document.getElementById('toastMsg').textContent = `Active Room in ${names[activeRoomTab]} (${activeRoomCode}). Close it first!`;
+                toast.classList.add('show');
+                tabBar.style.transform = 'translateX(-50%) scale(0.95)';
+                setTimeout(() => tabBar.style.transform = 'translateX(-50%) scale(1)', 150);
+                setTimeout(() => toast.classList.remove('show'), 3500);
+                return;
+            }
+
+            slider.style.transform = `translateX(-${index * 100}vw)`;
+            const pos = ['6px', 'calc(33.333% + 1px)', 'calc(66.666% - 4px)'];
+            indicator.style.left = pos[index];
+            indicator.style.background = color + '40';
+
+            tabBtns.forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+                btn.style.color = i === index ? '#fff' : 'rgba(255,255,255,0.4)';
+            });
+        }
+    </script>
+</body>
+</html>
+

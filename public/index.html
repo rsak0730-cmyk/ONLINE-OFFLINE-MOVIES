@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SyncBeat - Unified Hub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        
+        #viewport {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #slider {
+            display: flex;
+            width: 300vw;
+            height: 100vh;
+            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            will-change: transform;
+        }
+
+        iframe {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            background: transparent;
+        }
+
+        /* iOS 27 Liquid Glass Floating Tab Bar */
+        .liquid-tab-bar {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 420px;
+            height: 75px;
+            background: rgba(18, 18, 24, 0.75);
+            backdrop-filter: blur(35px) saturate(250%);
+            -webkit-backdrop-filter: blur(35px) saturate(250%);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            z-index: 9999999;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .liquid-tab-bar.locked {
+            border-color: rgba(239, 68, 68, 0.45);
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+        }
+
+        .tab-indicator {
+            position: absolute;
+            top: 10px;
+            bottom: 10px;
+            left: 8px;
+            width: calc(33.33% - 13px);
+            background: rgba(239, 68, 68, 0.3);
+            border-radius: 30px;
+            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), left 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.4s ease;
+            z-index: 1;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .tab-btn {
+            flex: 1;
+            height: 100%;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            z-index: 2;
+            cursor: pointer;
+            transition: color 0.4s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+        }
+
+        .tab-btn i { font-size: 22px; transition: transform 0.4s cubic-bezier(0.2, 2, 0.4, 1); }
+        .tab-btn.active { color: #fff; }
+        .tab-btn.active i { transform: translateY(-3px) scale(1.15); }
+        
+        .tab-btn .lock-tag {
+            position: absolute;
+            top: 8px;
+            right: 18px;
+            font-size: 10px;
+            color: #ef4444;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .liquid-tab-bar.locked .tab-btn:not(.active) .lock-tag {
+            opacity: 1;
+        }
+
+        /* Glass Floating Lock Toast */
+        #lockAlertToast {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(30, 10, 10, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #fecaca;
+            padding: 14px 22px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 800;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 20px rgba(239, 68, 68, 0.3);
+            z-index: 10000000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.4s cubic-bezier(0.2, 1, 0.4, 1);
+            pointer-events: none;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        #lockAlertToast.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="lockAlertToast">
+        <i class="fa-solid fa-lock" style="color: #ef4444; font-size: 16px;"></i>
+        <span id="lockToastMsg">Active Room Running! Close the room before switching tabs.</span>
+    </div>
+
+    <div id="viewport">
+        <div id="slider">
+            <iframe id="frame-movies" src="./movies.html"></iframe>
+            <iframe id="frame-golden" src="./golden.html"></iframe>
+            <iframe id="frame-audio" src="./audio.html"></iframe>
+        </div>
+    </div>
+
+    <nav class="liquid-tab-bar" id="tabBar">
+        <div class="tab-indicator" id="tab-indicator"></div>
+        <button class="tab-btn active" id="btn-tab-0" onclick="attemptTabSwitch(0, '#ef4444')">
+            <i class="fa-solid fa-film"></i>
+            <span>Movies</span>
+            <i class="fa-solid fa-lock lock-tag"></i>
+        </button>
+        <button class="tab-btn" id="btn-tab-1" onclick="attemptTabSwitch(1, '#fbbf24')">
+            <i class="fa-brands fa-youtube"></i>
+            <span>Golden</span>
+            <i class="fa-solid fa-lock lock-tag"></i>
+        </button>
+        <button class="tab-btn" id="btn-tab-2" onclick="attemptTabSwitch(2, '#8b5cf6')">
+            <i class="fa-solid fa-compact-disc"></i>
+            <span>Audio</span>
+            <i class="fa-solid fa-lock lock-tag"></i>
+        </button>
+    </nav>
+
+    <script>
+        let currentTab = 0;
+        let activeRoomTab = null; // null | 0 | 1 | 2
+        let activeRoomCode = null;
+
+        const slider = document.getElementById('slider');
+        const indicator = document.getElementById('tab-indicator');
+        const tabBar = document.getElementById('tabBar');
+        const toast = document.getElementById('lockAlertToast');
+        const toastMsg = document.getElementById('lockToastMsg');
+        const tabBtns = [
+            document.getElementById('btn-tab-0'),
+            document.getElementById('btn-tab-1'),
+            document.getElementById('btn-tab-2')
+        ];
+
+        // --- Cross-Tab Lock Communication ---
+        window.addEventListener('message', (event) => {
+            const data = event.data;
+            if (!data || data.sender !== 'syncbeat_subapp') return;
+
+            if (data.action === 'ROOM_OPENED') {
+                activeRoomTab = data.tabIndex;
+                activeRoomCode = data.code;
+                tabBar.classList.add('locked');
+            } else if (data.action === 'ROOM_CLOSED') {
+                activeRoomTab = null;
+                activeRoomCode = null;
+                tabBar.classList.remove('locked');
+            }
+        });
+
+        function attemptTabSwitch(targetIndex, colorHex) {
+            // Strict Constraint: If an active room is open in another tab, reject switching
+            if (activeRoomTab !== null && activeRoomTab !== targetIndex) {
+                triggerLockWarning();
+                return;
+            }
+
+            currentTab = targetIndex;
+            slider.style.transform = `translateX(-${targetIndex * 100}vw)`;
+
+            const positions = ['8px', 'calc(33.33% + 4px)', 'calc(66.66% + 0px)'];
+            indicator.style.left = positions[targetIndex];
+            indicator.style.background = `rgba(${hexToRgb(colorHex)}, 0.3)`;
+
+            tabBtns.forEach((btn, i) => {
+                btn.classList.toggle('active', i === targetIndex);
+                btn.style.color = i === targetIndex ? '#fff' : 'rgba(255,255,255,0.4)';
+            });
+        }
+
+        let toastTimer = null;
+        function triggerLockWarning() {
+            clearTimeout(toastTimer);
+            const tabNames = ['Movies', 'Golden', 'Audio'];
+            toastMsg.textContent = `Locked: You are in an active room in ${tabNames[activeRoomTab]} (${activeRoomCode}). Close or leave the room first!`;
+            toast.classList.add('visible');
+            
+            // Subtle liquid error vibration
+            tabBar.style.transform = 'translateX(-50%) scale(0.96)';
+            setTimeout(() => { tabBar.style.transform = 'translateX(-50%) scale(1)'; }, 150);
+
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3200);
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255,255,255';
+        }
+    </script>
+</body>
+</html>
+

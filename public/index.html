@@ -7,6 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="./manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -59,9 +60,65 @@
             transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); pointer-events: none; text-align: center;
         }
         #toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* Animated Splash Overlay */
+        #videoSplashOverlay {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000000;
+            z-index: 99999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.6s ease;
+        }
+
+        #videoSplashOverlay.fade-out {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        #splashVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+        }
+
+        #skipSplashBtn {
+            position: absolute;
+            top: 40px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
+
+    <!-- Fullscreen Animated Video Splash Screen -->
+    <div id="videoSplashOverlay">
+        <video id="splashVideo" autoplay muted playsinline preload="auto">
+            <source src="intro.mp4" type="video/mp4">
+            Your browser does not support video playback.
+        </video>
+        <button id="skipSplashBtn" onclick="dismissSplashScreen()">Skip</button>
+    </div>
 
     <div id="toast"><i class="fa-solid fa-lock" style="color: #ef4444;"></i> <span id="toastMsg"></span></div>
 
@@ -85,6 +142,38 @@
     </nav>
 
     <script>
+        // --- Splash Screen Controller ---
+        const splashOverlay = document.getElementById('videoSplashOverlay');
+        const splashVid = document.getElementById('splashVideo');
+
+        function dismissSplashScreen() {
+            if (!splashOverlay || splashOverlay.classList.contains('fade-out')) return;
+            
+            splashOverlay.classList.add('fade-out');
+            
+            setTimeout(() => {
+                if (splashVid) {
+                    splashVid.pause();
+                    splashVid.removeAttribute('src');
+                    splashVid.load();
+                }
+                splashOverlay.remove();
+            }, 650);
+        }
+
+        // Check if this is the first launch
+        if (localStorage.getItem('syncbeat_seen_intro')) {
+            splashOverlay.remove();
+        } else {
+            localStorage.setItem('syncbeat_seen_intro', 'true');
+            if (splashVid) {
+                splashVid.addEventListener('ended', dismissSplashScreen);
+                splashVid.addEventListener('error', dismissSplashScreen);
+                setTimeout(dismissSplashScreen, 8000); // Failsafe dismissal
+            }
+        }
+
+        // --- Core Tab & Lock Logic ---
         let currentTab = 0;
         let activeRoomTab = null;
         let activeRoomCode = null;
@@ -95,22 +184,21 @@
         const toast = document.getElementById('toast');
         const tabBtns = document.querySelectorAll('.tab-btn');
 
-        // Force browser into fullscreen mode on first tap to hide URL bar
+        // Force native fullscreen on first interaction
         let hasEnteredFullscreen = false;
         document.body.addEventListener('click', () => {
             if (!hasEnteredFullscreen) {
                 if (document.documentElement.requestFullscreen) {
                     document.documentElement.requestFullscreen().catch(err => console.warn(err));
-                } else if (document.documentElement.webkitRequestFullscreen) { /* Safari */
+                } else if (document.documentElement.webkitRequestFullscreen) { 
                     document.documentElement.webkitRequestFullscreen();
-                } else if (document.documentElement.msRequestFullscreen) { /* IE11 */
+                } else if (document.documentElement.msRequestFullscreen) { 
                     document.documentElement.msRequestFullscreen();
                 }
                 hasEnteredFullscreen = true;
             }
         });
 
-        // Master Control for Locking and Auto-Hiding
         window.addEventListener('message', (e) => {
             const data = e.data;
             if (data.sender !== 'syncbeat') return;
@@ -123,7 +211,7 @@
                 activeRoomTab = null;
                 activeRoomCode = null;
                 tabBar.classList.remove('locked');
-                tabBar.classList.remove('hide'); // Force show on close
+                tabBar.classList.remove('hide'); 
             } else if (data.action === 'MEDIA_PLAYING') {
                 tabBar.classList.add('hide');
             } else if (data.action === 'MEDIA_PAUSED') {
@@ -131,7 +219,6 @@
             }
         });
 
-        // Click screen anywhere to briefly reveal tab bar if hidden
         window.addEventListener('click', () => {
             if (tabBar.classList.contains('hide')) {
                 tabBar.classList.remove('hide');
@@ -163,4 +250,3 @@
     </script>
 </body>
 </html>
-

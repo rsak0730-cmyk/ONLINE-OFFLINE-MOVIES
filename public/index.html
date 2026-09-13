@@ -8,7 +8,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="./manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -162,7 +162,6 @@
             }, 650);
         }
 
-        // Check if this is the first launch
         if (localStorage.getItem('syncbeat_seen_intro')) {
             splashOverlay.remove();
         } else {
@@ -170,7 +169,7 @@
             if (splashVid) {
                 splashVid.addEventListener('ended', dismissSplashScreen);
                 splashVid.addEventListener('error', dismissSplashScreen);
-                setTimeout(dismissSplashScreen, 8000); // Failsafe dismissal
+                setTimeout(dismissSplashScreen, 8000); 
             }
         }
 
@@ -185,7 +184,6 @@
         const toast = document.getElementById('toast');
         const tabBtns = document.querySelectorAll('.tab-btn');
 
-        // Force native fullscreen on first interaction
         let hasEnteredFullscreen = false;
         document.body.addEventListener('click', () => {
             if (!hasEnteredFullscreen) {

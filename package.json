@@ -1,12 +1,16 @@
 {
-  "name": "syncbeat-backend",
+  "name": "syncbeat-unified",
   "version": "1.0.0",
-  "description": "SyncBeat Real-Time WebSocket Server",
+  "description": "SyncBeat Real-Time Multi-Device Video and Audio Synchronization Server",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "express": "^4.19.2",
     "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

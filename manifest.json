@@ -1,12 +1,12 @@
 {
-  "background_color": "#07070a",
+  "background_color": "#ffffff",
   "description": "Multi-Device Real-Time Room Synchronization and Watch Party platform for movies, YouTube, and music.",
   "dir": "ltr",
   "display": "standalone",
-  "name": "Listen 3 in one",
+  "name": "3 IN ONE LISTEN",
   "orientation": "any",
   "scope": "/",
-  "short_name": "Listen",
-  "start_url": "/www.",
-  "theme_color": "#07070a"
+  "short_name": "LISTEN",
+  "start_url": "Www.https//",
+  "theme_color": "#ffffff"
 }

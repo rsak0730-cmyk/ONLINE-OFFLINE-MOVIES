@@ -1,8 +1,21 @@
-{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "com.vercel.twa",
-        "sha256_cert_fingerprints": ["0A:15:D2:09:3C:31:1F:99:85:40:A2:55:8E:F2:73:56:7B:56:D0:73:A0:C9:45:60:D1:18:E4:B0:A5:46:83:05"]
-      }
-    }]
+
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "fullscreen",
+  "name": "online-offline-movies.vercel",
+  "orientation": "portrait",
+  "scope": "/",
+  "short_name": "online-offline-movies.vercel",
+  "start_url": "/",
+  "theme_color": "#ffffff",
+  "lang": "en",
+  "display_override": [
+    "fullscreen",
+    "window-controls-overlay"
+  ],
+  "categories": [
+    "design",
+    "multimedia",
+    "music",
+    "networking",
+    "productivity"

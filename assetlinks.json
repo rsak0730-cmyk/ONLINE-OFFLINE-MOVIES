@@ -1,0 +1,9 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "Edit.og_listen",
+        "sha256_cert_fingerprints": ["A6:EC:1E:A8:D3:6E:B8:2F:C7:2D:73:44:47:82:9E:F5:BA:89:3D:B1:BD:1F:55:22:3C:32:FC:8B:25:54:61:2B"]
+      }
+    }]
+

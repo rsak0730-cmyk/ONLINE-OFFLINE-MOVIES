@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Native Ludo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.3/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
+        body { background: #07070a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; color: #fff; font-family: sans-serif; }
+        
+        .header { padding: 15px; background: #121218; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; font-weight: 900; z-index: 50; }
+        .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; gap: 20px; }
+        
+        /* Board */
+        .ludo-board { width: 90vw; height: 90vw; max-width: 400px; max-height: 400px; background: #f8fafc; border: 4px solid #0f172a; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border-radius: 8px; }
+        .base { position: absolute; width: 40%; height: 40%; border: 2px solid #0f172a; display: flex; align-items: center; justify-content: center; }
+        .base-inner { width: 60%; height: 60%; background: #fff; border-radius: 10px; position: relative; }
+        .red { top: 0; left: 0; background: #ef4444; }
+        .green { top: 0; right: 0; background: #22c55e; }
+        .blue { bottom: 0; left: 0; background: #3b82f6; }
+        .yellow { bottom: 0; right: 0; background: #eab308; }
+        .center-home { position: absolute; top: 40%; left: 40%; width: 20%; height: 20%; background: #94a3b8; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+
+        /* Tokens */
+        .token { position: absolute; width: 12%; height: 12%; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.5); cursor: grab; transform: translate(-50%, -50%); transition: left 0.05s, top 0.05s; }
+        .token:active { cursor: grabbing; box-shadow: 0 8px 15px rgba(0,0,0,0.8); transform: translate(-50%, -50%) scale(1.2); }
+
+        /* Dice */
+        .dice-btn { width: 60px; height: 60px; background: #fff; border-radius: 12px; border: 3px solid #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #0f172a; cursor: pointer; box-shadow: 0 8px 15px rgba(0,0,0,0.5); z-index: 20; }
+        .rolling { animation: shake 0.4s ease-in-out infinite alternate; pointer-events: none; }
+        @keyframes shake { 0% { transform: rotate(-15deg) translateY(0); } 100% { transform: rotate(15deg) translateY(-10px); } }
+
+        /* Social UI */
+        .social-drawer { height: 180px; background: #121218; display: flex; flex-direction: column; border-top: 1px solid #333; z-index: 10; }
+        .emoji-bar { display: flex; gap: 12px; padding: 10px 14px; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .emoji-btn { font-size: 24px; background: transparent; border: none; cursor: pointer; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+        .chat-msg { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 10px; max-width: 80%; align-self: flex-start; }
+        .chat-msg.self { background: rgba(59, 130, 246, 0.25); align-self: flex-end; }
+        .chat-input-bar { padding: 8px 12px; display: flex; gap: 8px; background: rgba(0,0,0,0.3); }
+        .chat-input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 12px; color: #fff; outline: none; }
+        .chat-send { background: #ef4444; border: none; color: #fff; padding: 0 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+        /* Modals & Overlays */
+        #roomSetupModal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+        .setup-card { background: #121218; width: 100%; max-width: 320px; border-radius: 20px; padding: 20px; border: 1px solid rgba(239, 68, 68, 0.3); text-align: center; }
+        .input-glass { width: 100%; background: #000; border: 1px solid #333; border-radius: 10px; padding: 12px; color: #fff; margin-bottom: 15px; text-align: center; }
+        .btn { padding: 12px; border-radius: 10px; font-weight: 800; cursor: pointer; border: none; width: 100%; margin-bottom: 10px; }
+        .btn-host { background: #ef4444; color: #fff; }
+        .btn-join { background: #3b82f6; color: #fff; }
+        
+        #emojiOverlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 20; }
+        .floating-emoji { position: absolute; bottom: 20px; font-size: 40px; animation: floatUp 2.2s ease-out forwards; }
+        @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { transform: translateY(-40px) scale(1.2); opacity: 1; } 100% { transform: translateY(-300px) scale(1); opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div id="roomTitle"><i class="fa-solid fa-chess-board" style="color: #ef4444;"></i> LUDO</div>
+        <button onclick="leaveRoom()" style="background:#ef4444; color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:800; display:none;" id="leaveBtn">Quit</button>
+    </div>
+
+    <div class="game-area">
+        <div id="emojiOverlay"></div>
+        <div class="ludo-board" id="board">
+            <div class="base red"><div class="base-inner"></div></div>
+            <div class="base green"><div class="base-inner"></div></div>
+            <div class="base blue"><div class="base-inner"></div></div>
+            <div class="base yellow"><div class="base-inner"></div></div>
+            <div class="center-home"></div>
+            <!-- Tokens injected here -->
+        </div>
+
+        <div class="dice-btn" id="dice" onclick="rollDice()">
+            <i class="fa-solid fa-dice-one" id="diceIcon"></i>
+        </div>
+    </div>
+
+    <div class="social-drawer">
+        <div class="emoji-bar">
+            <button class="emoji-btn" onclick="sendReaction('😂')">😂</button>
+            <button class="emoji-btn" onclick="sendReaction('😡')">😡</button>
+            <button class="emoji-btn" onclick="sendReaction('😎')">😎</button>
+            <button class="emoji-btn" onclick="sendReaction('😭')">😭</button>
+            <button class="emoji-btn" onclick="sendReaction('🔥')">🔥</button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-bar">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+            <button class="chat-send" onclick="sendChatMessage()">Send</button>
+        </div>
+    </div>
+
+    <div id="roomSetupModal">
+        <div class="setup-card">
+            <h3 style="color:#ef4444; margin-bottom:15px;">Setup Ludo Room</h3>
+            <input type="text" id="roomCodeInput" class="input-glass" placeholder="Enter Room Code">
+            <button class="btn btn-host" onclick="joinGame('host')">Host Match</button>
+            <button class="btn btn-join" onclick="joinGame('join')">Join Match</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io('https://your-backend-url.onrender.com'); // UPDATE THIS URL
+        let activeCode = null;
+        let activeToken = null;
+
+        // Initialize Tokens
+        const board = document.getElementById('board');
+        const colors = [{c:'#ef4444', x:20, y:20}, {c:'#22c55e', x:80, y:20}, {c:'#3b82f6', x:20, y:80}, {c:'#eab308', x:80, y:80}];
+        let tid = 0;
+        colors.forEach(col => {
+            for(let i=0; i<4; i++) {
+                let ox = (i%2===0)?-8:8; let oy = (i<2)?-8:8;
+                let t = document.createElement('div');
+                t.className = 'token'; t.id = `t${tid++}`;
+                t.style.background = col.c; t.style.left = (col.x+ox)+'%'; t.style.top = (col.y+oy)+'%';
+                t.addEventListener('pointerdown', () => activeToken = t);
+                board.appendChild(t);
+            }
+        });
+
+        // Drag Physics
+        board.addEventListener('pointermove', (e) => {
+            if (!activeToken) return;
+            const rect = board.getBoundingClientRect();
+            let x = ((e.clientX - rect.left) / rect.width) * 100;
+            let y = ((e.clientY - rect.top) / rect.height) * 100;
+            activeToken.style.left = Math.max(0, Math.min(100, x)) + '%';
+            activeToken.style.top = Math.max(0, Math.min(100, y)) + '%';
+            
+            socket.emit('move_piece', { room: activeCode, id: activeToken.id, x: activeToken.style.left, y: activeToken.style.top });
+        });
+        document.addEventListener('pointerup', () => activeToken = null);
+
+        socket.on('receive_move', (data) => {
+            const t = document.getElementById(data.id);
+            if(t) { t.style.left = data.x; t.style.top = data.y; }
+        });
+
+        // Room Logic
+        function joinGame(type) {
+            let code = document.getElementById('roomCodeInput').value.trim();
+            if (type === 'host') code = 'LUDO-' + Math.floor(1000 + Math.random() * 9000);
+            if (!code) return alert("Enter a code!");
+            activeCode = code;
+            socket.emit('join_room', code);
+            document.getElementById('roomSetupModal').style.display = 'none';
+            document.getElementById('leaveBtn').style.display = 'block';
+            document.getElementById('roomTitle').innerHTML = `LUDO [${code}]`;
+            window.parent.postMessage({ sender: 'syncbeat', action: 'ROOM_OPENED', tab: 3, code: code }, '*');
+        }
+
+        function leaveRoom() {
+            window.parent.postMessage({ sender: 'syncbeat', action: 'ROOM_CLOSED' }, '*');
+            location.reload();
+        }
+
+        // Dice & Chat
+        const diceIcons = ['fa-dice-one', 'fa-dice-two', 'fa-dice-three', 'fa-dice-four', 'fa-dice-five', 'fa-dice-six'];
+        function rollDice() {
+            const dice = document.getElementById('dice');
+            dice.classList.add('rolling');
+            const res = Math.floor(Math.random() * 6);
+            socket.emit('roll_dice', { room: activeCode, result: res });
+            setTimeout(() => { dice.classList.remove('rolling'); document.getElementById('diceIcon').className = `fa-solid ${diceIcons[res]}`; }, 500);
+        }
+        socket.on('receive_dice', (res) => {
+            const dice = document.getElementById('dice'); dice.classList.add('rolling');
+            setTimeout(() => { dice.classList.remove('rolling'); document.getElementById('diceIcon').className = `fa-solid ${diceIcons[res]}`; }, 500);
+        });
+
+        function sendChatMessage() {
+            const txt = document.getElementById('chatInput').value.trim();
+            if(!txt) return;
+            document.getElementById('chatMessages').innerHTML += `<div class="chat-msg self">${txt}</div>`;
+            socket.emit('send_chat', { room: activeCode, message: txt });
+            document.getElementById('chatInput').value = '';
+        }
+        socket.on('receive_chat', (msg) => document.getElementById('chatMessages').innerHTML += `<div class="chat-msg">${msg}</div>`);
+
+        function sendReaction(emoji) {
+            triggerEmoji(emoji); socket.emit('send_emoji', { room: activeCode, emoji: emoji });
+        }
+        socket.on('receive_emoji', (emoji) => triggerEmoji(emoji));
+        function triggerEmoji(emoji) {
+            const el = document.createElement('div'); el.className = 'floating-emoji'; el.innerText = emoji; el.style.left = Math.random()*80+'%';
+            document.getElementById('emojiOverlay').appendChild(el);
+            setTimeout(() => el.remove(), 2200);
+        }
+    </script>
+</body>
+</html>
+

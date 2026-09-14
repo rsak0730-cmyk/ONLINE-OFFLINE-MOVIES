@@ -117,7 +117,7 @@
                 </div>
                 <canvas id="pttVisualizer" class="hidden" width="280" height="30" style="width:100%; height:30px; background:rgba(5,4,1,0.8); border-radius:8px; margin-bottom:8px; border: 1px solid rgba(251,191,36,0.2);"></canvas>
                 <div style="display: flex; gap: 8px;">
-                    <button class="ptt-btn" id="pttButton" onmousedown="startPTT()" onmouseup="stopPTT()" onmouseleave="stopPTT()" ontouchstart="startPTT()" ontouchend="stopPTT()" ontouchcancel="stopPTT()" title="Hold to Talk">🎤</button>
+                    <button class="ptt-btn" id="pttButton" onpointerdown="startPTT(event)" onpointerup="stopPTT(event)" onpointerleave="stopPTT(event)" onpointercancel="stopPTT(event)" style="touch-action: none;" title="Hold to Talk">🎤</button>
                     <input type="text" id="chatInput" class="search-input" placeholder="Message..." onkeydown="if(event.key==='Enter') sendChat()">
                     <button class="code-action-btn" style="background:linear-gradient(135deg, #fbbf24 0%, #d97706 100%); color:#1c1404; font-weight:800; border:none; padding: 8px 14px;" onclick="sendChat()">Send</button>
                 </div>
@@ -248,19 +248,30 @@
             updateUnreadBadge(sender);
         }
 
-        // PTT Logic
-        let mediaRecorder = null; let audioChunks = []; let isRecording = false; let pttStream = null;
-        let audioContext = null; let analyser = null; let visualizerAnim = null; let isHoldingPTT = false;
+        let mediaRecorder = null; 
+        let audioChunks = []; 
+        let isRecording = false; 
+        let pttStream = null;
+        let audioContext = null; 
+        let analyser = null; 
+        let visualizerAnim = null; 
+        let isHoldingPTT = false;
         
-        async function startPTT() {
+        async function startPTT(e) {
+            if (e && e.preventDefault) e.preventDefault();
             if (isHoldingPTT || isRecording) return;
             isHoldingPTT = true;
+            
             try {
                 pttStream = await navigator.mediaDevices.getUserMedia({ 
                     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
                 });
                 
-                if (!isHoldingPTT) { pttStream.getTracks().forEach(t => t.stop()); pttStream = null; return; }
+                if (!isHoldingPTT) { 
+                    pttStream.getTracks().forEach(t => t.stop()); 
+                    pttStream = null; 
+                    return; 
+                }
                 
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
@@ -275,11 +286,13 @@
                 canvas.classList.remove('hidden');
                 
                 function draw() {
+                    if (!isHoldingPTT) return;
                     visualizerAnim = requestAnimationFrame(draw);
                     analyser.getByteTimeDomainData(dataArray);
-                    canvasCtx.fillStyle = 'rgba(5,4,1,0.8)'; 
+                    canvasCtx.fillStyle = 'rgba(0,0,0,0.6)'; 
                     canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-                    canvasCtx.lineWidth = 2; canvasCtx.strokeStyle = '#fbbf24'; 
+                    canvasCtx.lineWidth = 2; 
+                    canvasCtx.strokeStyle = '#fbbf24'; 
                     canvasCtx.beginPath();
                     const sliceWidth = canvas.width * 1.0 / bufferLength; let x = 0;
                     for(let i = 0; i < bufferLength; i++) {
@@ -294,6 +307,7 @@
                 mediaRecorder = new MediaRecorder(pttStream);
                 document.getElementById('pttButton').classList.add('recording');
                 isRecording = true;
+                audioChunks = [];
                 
                 mediaRecorder.ondataavailable = e => { if(e.data.size > 0) audioChunks.push(e.data); };
                 mediaRecorder.onstop = () => {
@@ -307,19 +321,43 @@
                     };
                     reader.readAsDataURL(blob);
                     audioChunks = [];
+                    
                     if (audioContext) { audioContext.close(); audioContext = null; }
                     cancelAnimationFrame(visualizerAnim);
                     canvas.classList.add('hidden');
+                    
+                    if (pttStream) { 
+                        pttStream.getTracks().forEach(t => t.stop()); 
+                        pttStream = null; 
+                    }
                 };
-                mediaRecorder.start();
-            } catch (err) { isHoldingPTT = false; showToast("Microphone access denied."); }
+                
+                if (isHoldingPTT) {
+                    mediaRecorder.start();
+                } else {
+                    mediaRecorder.stop();
+                }
+                
+            } catch (err) { 
+                isHoldingPTT = false; 
+                showToast("Microphone access denied."); 
+            }
         }
         
-        function stopPTT() { 
+        function stopPTT(e) { 
+            if (e && e.preventDefault) e.preventDefault();
+            if (!isHoldingPTT) return;
             isHoldingPTT = false;
-            if (mediaRecorder && isRecording) { mediaRecorder.stop(); isRecording = false; }
+            
             document.getElementById('pttButton').classList.remove('recording');
-            if (pttStream) { pttStream.getTracks().forEach(t => t.stop()); pttStream = null; }
+            
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') { 
+                mediaRecorder.stop(); 
+                isRecording = false; 
+            } else if (pttStream) { 
+                pttStream.getTracks().forEach(t => t.stop()); 
+                pttStream = null; 
+            }
         }
         
         function appendVoiceMessage(sender, audioData) {
@@ -327,7 +365,7 @@
             if (container.querySelector('div[style*="text-align: center"]')) container.innerHTML = '';
             const div = document.createElement('div');
             const autoplayAttr = sender !== currentUserName ? 'autoplay' : '';
-            div.innerHTML = `<b style="color: #fbbf24;">🎤 ${escapeHtml(sender)}:</b><br><audio src="${audioData}" controls ${autoplayAttr} style="height: 30px; width: 100%; margin-top: 4px;"></audio>`;
+            div.innerHTML = `<b style="color:#fbbf24;">🎤 ${escapeHtml(sender)}:</b><br><audio src="${audioData}" controls ${autoplayAttr} style="height: 30px; width: 100%; margin-top: 4px;"></audio>`;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
             updateUnreadBadge(sender);
@@ -340,3 +378,4 @@
     </script>
 </body>
 </html>
+

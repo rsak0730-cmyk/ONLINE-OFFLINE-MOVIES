@@ -9,14 +9,10 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
         body { background: #07070a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; color: #fff; font-family: sans-serif; }
-        
         .header { padding: 15px; background: #121218; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; font-weight: 900; }
-        .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .game-area { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+        canvas { background: #d97736; border: 15px solid #5a3219; border-radius: 5px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); width: 95vw; height: 95vw; max-width: 400px; max-height: 400px; }
         
-        /* Canvas */
-        canvas { background: #d97736; border: 15px solid #5a3219; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); max-width: 95vw; max-height: 95vw; }
-
-        /* Social UI (Same as Ludo) */
         .social-drawer { height: 180px; background: #121218; display: flex; flex-direction: column; border-top: 1px solid #333; z-index: 10; }
         .emoji-bar { display: flex; gap: 12px; padding: 10px 14px; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .emoji-btn { font-size: 24px; background: transparent; border: none; cursor: pointer; }
@@ -33,16 +29,19 @@
         .btn { padding: 12px; border-radius: 10px; font-weight: 800; cursor: pointer; border: none; width: 100%; margin-bottom: 10px; }
         .btn-host { background: #f59e0b; color: #fff; }
         .btn-join { background: #3b82f6; color: #fff; }
+        #emojiOverlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 20; }
+        .floating-emoji { position: absolute; bottom: 20px; font-size: 40px; animation: floatUp 2.2s ease-out forwards; }
+        @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { transform: translateY(-40px) scale(1.2); opacity: 1; } 100% { transform: translateY(-300px) scale(1); opacity: 0; } }
     </style>
 </head>
 <body>
-
     <div class="header">
         <div id="roomTitle"><i class="fa-solid fa-bullseye" style="color: #f59e0b;"></i> CARROM</div>
         <button onclick="leaveRoom()" style="background:#ef4444; color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:800; display:none;" id="leaveBtn">Quit</button>
     </div>
-
+    
     <div class="game-area">
+        <div id="emojiOverlay"></div>
         <canvas id="carromCanvas" width="400" height="400"></canvas>
     </div>
 
@@ -71,10 +70,15 @@
     </div>
 
     <script>
-        const socket = io('https://your-backend-url.onrender.com'); // UPDATE THIS URL
+        // CRITICAL: Replace with your Glitch live URL
+        const socket = io('https://your-glitch-project-name.glitch.me');
         let activeCode = null;
+        let myProfile = null;
 
-        // Room Logic
+        window.addEventListener('message', (e) => {
+            if (e.data.type === 'AUTH') myProfile = e.data.profile;
+        });
+
         function joinGame(type) {
             let code = document.getElementById('roomCodeInput').value.trim();
             if (type === 'host') code = 'CARROM-' + Math.floor(1000 + Math.random() * 9000);
@@ -92,12 +96,28 @@
             location.reload();
         }
 
-        // Native Canvas Physics
         const cvs = document.getElementById('carromCanvas');
         const ctx = cvs.getContext('2d');
-        let striker = { x: 200, y: 320, r: 15, vx: 0, vy: 0 };
+        let coins = [];
+        
+        function initBoard() {
+            coins = [{ id: 'queen', c: '#ef4444', x: 200, y: 200, r: 11, vx: 0, vy: 0, mass: 1 }];
+            for(let i=0; i<6; i++) {
+                let angle = i * (Math.PI / 3);
+                coins.push({ id: `w1_${i}`, c: '#f8fafc', x: 200 + Math.cos(angle)*22, y: 200 + Math.sin(angle)*22, r: 11, vx: 0, vy: 0, mass: 1 });
+            }
+            for(let i=0; i<12; i++) {
+                let angle = i * (Math.PI / 6);
+                let color = i % 2 === 0 ? '#0f172a' : '#f8fafc';
+                coins.push({ id: `ring2_${i}`, c: color, x: 200 + Math.cos(angle)*44, y: 200 + Math.sin(angle)*44, r: 11, vx: 0, vy: 0, mass: 1 });
+            }
+            coins.push({ id: 'striker', c: '#fff', x: 200, y: 320, r: 15, vx: 0, vy: 0, mass: 1.5 });
+        }
+        initBoard();
+
         let isDragging = false;
         let startX, startY;
+        let striker = coins.find(c => c.id === 'striker');
 
         cvs.addEventListener('pointerdown', (e) => {
             const rect = cvs.getBoundingClientRect();
@@ -111,48 +131,82 @@
             const rect = cvs.getBoundingClientRect();
             const endX = (e.clientX - rect.left) * (cvs.width / rect.width);
             const endY = (e.clientY - rect.top) * (cvs.height / rect.height);
-            striker.vx = (startX - endX) * 0.15;
-            striker.vy = (startY - endY) * 0.15;
+            striker.vx = (startX - endX) * 0.2;
+            striker.vy = (startY - endY) * 0.2;
             isDragging = false;
-            
-            socket.emit('strike_carrom', { room: activeCode, vx: striker.vx, vy: striker.vy, x: striker.x, y: striker.y });
         });
 
-        socket.on('receive_strike', (data) => {
-            striker.x = data.x; striker.y = data.y;
-            striker.vx = data.vx; striker.vy = data.vy;
+        function resolveCollision(a, b) {
+            let dx = b.x - a.x; let dy = b.y - a.y; let dist = Math.hypot(dx, dy);
+            if (dist < a.r + b.r) {
+                let overlap = (a.r + b.r - dist) / 2;
+                let nx = dx / dist, ny = dy / dist;
+                a.x -= nx * overlap; a.y -= ny * overlap;
+                b.x += nx * overlap; b.y += ny * overlap;
+                let kx = b.vx - a.vx; let ky = b.vy - a.vy;
+                let p = 2 * (nx * kx + ny * ky) / (a.mass + b.mass);
+                a.vx += p * b.mass * nx; a.vy += p * b.mass * ny;
+                b.vx -= p * a.mass * nx; b.vy -= p * a.mass * ny;
+            }
+        }
+
+        function updatePhysics() {
+            let moved = false;
+            for (let i = 0; i < coins.length; i++) {
+                let c = coins[i];
+                if (Math.abs(c.vx) > 0.01 || Math.abs(c.vy) > 0.01) {
+                    moved = true;
+                    c.vx *= 0.98; c.vy *= 0.98;
+                    c.x += c.vx; c.y += c.vy;
+                    if (c.x < c.r || c.x > cvs.width - c.r) { c.vx *= -0.8; c.x = Math.max(c.r, Math.min(cvs.width - c.r, c.x)); }
+                    if (c.y < c.r || c.y > cvs.height - c.r) { c.vy *= -0.8; c.y = Math.max(c.r, Math.min(cvs.height - c.r, c.y)); }
+                }
+                for (let j = i + 1; j < coins.length; j++) resolveCollision(c, coins[j]);
+            }
+            if (moved && activeCode) socket.emit('sync_carrom', { room: activeCode, boardData: coins });
+        }
+
+        socket.on('receive_carrom', (boardData) => {
+            boardData.forEach((netCoin) => {
+                let local = coins.find(c => c.id === netCoin.id);
+                if (local) { local.x = netCoin.x; local.y = netCoin.y; local.vx = netCoin.vx; local.vy = netCoin.vy; }
+            });
         });
 
         function draw() {
-            striker.vx *= 0.98; striker.vy *= 0.98;
-            striker.x += striker.vx; striker.y += striker.vy;
-            if (striker.x < striker.r || striker.x > cvs.width - striker.r) striker.vx *= -1;
-            if (striker.y < striker.r || striker.y > cvs.height - striker.r) striker.vy *= -1;
-            striker.x = Math.max(striker.r, Math.min(cvs.width - striker.r, striker.x));
-            striker.y = Math.max(striker.r, Math.min(cvs.height - striker.r, striker.y));
-
+            updatePhysics();
             ctx.clearRect(0, 0, cvs.width, cvs.height);
             ctx.beginPath(); ctx.arc(200, 200, 40, 0, Math.PI*2); ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=2; ctx.stroke();
             const pockets = [[15,15], [385,15], [15,385], [385,385]];
             pockets.forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], 20, 0, Math.PI*2); ctx.fillStyle='#111'; ctx.fill(); });
-
-            ctx.beginPath(); ctx.arc(striker.x, striker.y, striker.r, 0, Math.PI * 2);
-            ctx.fillStyle = '#fff'; ctx.fill(); ctx.stroke();
-
+            coins.forEach(c => {
+                ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+                ctx.fillStyle = c.c; ctx.fill(); ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+            });
             requestAnimationFrame(draw);
         }
         draw();
 
-        // Chat
+        // Chat & Emojis
         function sendChatMessage() {
             const txt = document.getElementById('chatInput').value.trim();
             if(!txt) return;
-            document.getElementById('chatMessages').innerHTML += `<div class="chat-msg self">${txt}</div>`;
-            socket.emit('send_chat', { room: activeCode, message: txt });
+            const msgObj = `<b>${myProfile ? myProfile.name : 'You'}:</b> ${txt}`;
+            document.getElementById('chatMessages').innerHTML += `<div class="chat-msg self">${msgObj}</div>`;
+            socket.emit('send_chat', { room: activeCode, message: msgObj });
             document.getElementById('chatInput').value = '';
         }
         socket.on('receive_chat', (msg) => document.getElementById('chatMessages').innerHTML += `<div class="chat-msg">${msg}</div>`);
-        function sendReaction(emoji) { socket.emit('send_emoji', { room: activeCode, emoji: emoji }); }
+
+        function sendReaction(emoji) {
+            triggerEmoji(emoji); socket.emit('send_emoji', { room: activeCode, emoji: emoji });
+        }
+        socket.on('receive_emoji', (emoji) => triggerEmoji(emoji));
+        function triggerEmoji(emoji) {
+            const el = document.createElement('div'); el.className = 'floating-emoji'; el.innerText = emoji; el.style.left = Math.random()*80+'%';
+            document.getElementById('emojiOverlay').appendChild(el);
+            setTimeout(() => el.remove(), 2200);
+        }
     </script>
 </body>
 </html>

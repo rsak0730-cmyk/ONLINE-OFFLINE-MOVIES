@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Native Carrom</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.3/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
+        body { background: #07070a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; color: #fff; font-family: sans-serif; }
+        
+        .header { padding: 15px; background: #121218; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; font-weight: 900; }
+        .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        
+        /* Canvas */
+        canvas { background: #d97736; border: 15px solid #5a3219; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); max-width: 95vw; max-height: 95vw; }
+
+        /* Social UI (Same as Ludo) */
+        .social-drawer { height: 180px; background: #121218; display: flex; flex-direction: column; border-top: 1px solid #333; z-index: 10; }
+        .emoji-bar { display: flex; gap: 12px; padding: 10px 14px; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .emoji-btn { font-size: 24px; background: transparent; border: none; cursor: pointer; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+        .chat-msg { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 10px; max-width: 80%; align-self: flex-start; }
+        .chat-msg.self { background: rgba(59, 130, 246, 0.25); align-self: flex-end; }
+        .chat-input-bar { padding: 8px 12px; display: flex; gap: 8px; background: rgba(0,0,0,0.3); }
+        .chat-input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 12px; color: #fff; outline: none; }
+        .chat-send { background: #f59e0b; border: none; color: #fff; padding: 0 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+        #roomSetupModal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+        .setup-card { background: #121218; width: 100%; max-width: 320px; border-radius: 20px; padding: 20px; border: 1px solid rgba(245, 158, 11, 0.3); text-align: center; }
+        .input-glass { width: 100%; background: #000; border: 1px solid #333; border-radius: 10px; padding: 12px; color: #fff; margin-bottom: 15px; text-align: center; }
+        .btn { padding: 12px; border-radius: 10px; font-weight: 800; cursor: pointer; border: none; width: 100%; margin-bottom: 10px; }
+        .btn-host { background: #f59e0b; color: #fff; }
+        .btn-join { background: #3b82f6; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div id="roomTitle"><i class="fa-solid fa-bullseye" style="color: #f59e0b;"></i> CARROM</div>
+        <button onclick="leaveRoom()" style="background:#ef4444; color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:800; display:none;" id="leaveBtn">Quit</button>
+    </div>
+
+    <div class="game-area">
+        <canvas id="carromCanvas" width="400" height="400"></canvas>
+    </div>
+
+    <div class="social-drawer">
+        <div class="emoji-bar">
+            <button class="emoji-btn" onclick="sendReaction('😂')">😂</button>
+            <button class="emoji-btn" onclick="sendReaction('😡')">😡</button>
+            <button class="emoji-btn" onclick="sendReaction('😎')">😎</button>
+            <button class="emoji-btn" onclick="sendReaction('😭')">😭</button>
+            <button class="emoji-btn" onclick="sendReaction('🔥')">🔥</button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-bar">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+            <button class="chat-send" onclick="sendChatMessage()">Send</button>
+        </div>
+    </div>
+
+    <div id="roomSetupModal">
+        <div class="setup-card">
+            <h3 style="color:#f59e0b; margin-bottom:15px;">Setup Carrom Room</h3>
+            <input type="text" id="roomCodeInput" class="input-glass" placeholder="Enter Room Code">
+            <button class="btn btn-host" onclick="joinGame('host')">Host Match</button>
+            <button class="btn btn-join" onclick="joinGame('join')">Join Match</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io('https://your-backend-url.onrender.com'); // UPDATE THIS URL
+        let activeCode = null;
+
+        // Room Logic
+        function joinGame(type) {
+            let code = document.getElementById('roomCodeInput').value.trim();
+            if (type === 'host') code = 'CARROM-' + Math.floor(1000 + Math.random() * 9000);
+            if (!code) return alert("Enter a code!");
+            activeCode = code;
+            socket.emit('join_room', code);
+            document.getElementById('roomSetupModal').style.display = 'none';
+            document.getElementById('leaveBtn').style.display = 'block';
+            document.getElementById('roomTitle').innerHTML = `CARROM [${code}]`;
+            window.parent.postMessage({ sender: 'syncbeat', action: 'ROOM_OPENED', tab: 4, code: code }, '*');
+        }
+
+        function leaveRoom() {
+            window.parent.postMessage({ sender: 'syncbeat', action: 'ROOM_CLOSED' }, '*');
+            location.reload();
+        }
+
+        // Native Canvas Physics
+        const cvs = document.getElementById('carromCanvas');
+        const ctx = cvs.getContext('2d');
+        let striker = { x: 200, y: 320, r: 15, vx: 0, vy: 0 };
+        let isDragging = false;
+        let startX, startY;
+
+        cvs.addEventListener('pointerdown', (e) => {
+            const rect = cvs.getBoundingClientRect();
+            startX = (e.clientX - rect.left) * (cvs.width / rect.width);
+            startY = (e.clientY - rect.top) * (cvs.height / rect.height);
+            if (Math.hypot(startX - striker.x, startY - striker.y) < 30) isDragging = true;
+        });
+
+        cvs.addEventListener('pointerup', (e) => {
+            if (!isDragging) return;
+            const rect = cvs.getBoundingClientRect();
+            const endX = (e.clientX - rect.left) * (cvs.width / rect.width);
+            const endY = (e.clientY - rect.top) * (cvs.height / rect.height);
+            striker.vx = (startX - endX) * 0.15;
+            striker.vy = (startY - endY) * 0.15;
+            isDragging = false;
+            
+            socket.emit('strike_carrom', { room: activeCode, vx: striker.vx, vy: striker.vy, x: striker.x, y: striker.y });
+        });
+
+        socket.on('receive_strike', (data) => {
+            striker.x = data.x; striker.y = data.y;
+            striker.vx = data.vx; striker.vy = data.vy;
+        });
+
+        function draw() {
+            striker.vx *= 0.98; striker.vy *= 0.98;
+            striker.x += striker.vx; striker.y += striker.vy;
+            if (striker.x < striker.r || striker.x > cvs.width - striker.r) striker.vx *= -1;
+            if (striker.y < striker.r || striker.y > cvs.height - striker.r) striker.vy *= -1;
+            striker.x = Math.max(striker.r, Math.min(cvs.width - striker.r, striker.x));
+            striker.y = Math.max(striker.r, Math.min(cvs.height - striker.r, striker.y));
+
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            ctx.beginPath(); ctx.arc(200, 200, 40, 0, Math.PI*2); ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=2; ctx.stroke();
+            const pockets = [[15,15], [385,15], [15,385], [385,385]];
+            pockets.forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], 20, 0, Math.PI*2); ctx.fillStyle='#111'; ctx.fill(); });
+
+            ctx.beginPath(); ctx.arc(striker.x, striker.y, striker.r, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff'; ctx.fill(); ctx.stroke();
+
+            requestAnimationFrame(draw);
+        }
+        draw();
+
+        // Chat
+        function sendChatMessage() {
+            const txt = document.getElementById('chatInput').value.trim();
+            if(!txt) return;
+            document.getElementById('chatMessages').innerHTML += `<div class="chat-msg self">${txt}</div>`;
+            socket.emit('send_chat', { room: activeCode, message: txt });
+            document.getElementById('chatInput').value = '';
+        }
+        socket.on('receive_chat', (msg) => document.getElementById('chatMessages').innerHTML += `<div class="chat-msg">${msg}</div>`);
+        function sendReaction(emoji) { socket.emit('send_emoji', { room: activeCode, emoji: emoji }); }
+    </script>
+</body>
+</html>
+

@@ -186,14 +186,18 @@
                 <div id="chatMessagesContainer" style="height: 160px; overflow-y: auto; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; margin-bottom: 8px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
                     <div style="color: #9ca3af; text-align: center; font-style: italic;">No messages yet. Say hello!</div>
                 </div>
+                <canvas id="pttVisualizer" class="hidden" width="280" height="30" style="width:100%; height:30px; background:#1e293b; border-radius:8px; margin-bottom:8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);"></canvas>
                 <div style="display: flex; gap: 6px;">
-                    <button class="ptt-btn" id="pttButton" onmousedown="startPTT()" onmouseup="stopPTT()" ontouchstart="startPTT()" ontouchend="stopPTT()" title="Hold to Talk">🎤</button>
+                    <button class="ptt-btn" id="pttButton" onmousedown="startPTT()" onmouseup="stopPTT()" onmouseleave="stopPTT()" ontouchstart="startPTT()" ontouchend="stopPTT()" ontouchcancel="stopPTT()" title="Hold to Talk">🎤</button>
                     <input type="text" id="chatInput" class="search-input" style="margin-bottom:0;" placeholder="Message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
                     <button class="action-btn-custom" style="padding: 10px 14px; background:#ef4444; color:white; border:none; border-radius:8px; font-weight: bold; cursor: pointer;" onclick="sendChatMessage()">Send</button>
                 </div>
             </div>
         </div>
-        <button id="liveChatLauncherBtn" class="live-chat-launcher" onclick="toggleLiveChatWindow()">💬 LIVE CHAT</button>
+        <button id="liveChatLauncherBtn" class="live-chat-launcher" onclick="toggleLiveChatWindow()">
+            💬 LIVE CHAT
+            <span id="chatUnreadBadge" class="hidden" style="background: white; color: #ef4444; border-radius: 10px; padding: 2px 6px; font-size: 10px; margin-left: 4px; font-weight: 900; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);">0</span>
+        </button>
     </div>
 
     <div id="toastModal">Notification</div>
@@ -233,44 +237,150 @@
             if (!isHosting) { document.getElementById('hostModeTabs').classList.add('hidden'); } 
         }
         
-        // PTT Feature
-        let mediaRecorder; let audioChunks = []; let isRecording = false;
-        async function startPTT() {
-            if (isRecording) return;
+        // --- CHAT, PTT, & NOTIFICATIONS ---
+        let unreadChatCount = 0;
+
+        function playDingSound() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            } catch (e) {}
+        }
+
+        function updateUnreadBadge(sender) {
+            if (sender === currentUserName) return;
+            playDingSound();
+            const windowEl = document.getElementById('liveChatWindow');
+            if (windowEl.classList.contains('hidden')) {
+                unreadChatCount++;
+                const badge = document.getElementById('chatUnreadBadge');
+                badge.textContent = unreadChatCount;
+                badge.classList.remove('hidden');
+            }
+        }
+
+        function toggleLiveChatWindow() { 
+            const windowEl = document.getElementById('liveChatWindow'); 
+            const launcherBtn = document.getElementById('liveChatLauncherBtn'); 
+            const isHidden = windowEl.classList.contains('hidden'); 
+            windowEl.classList.toggle('hidden', !isHidden); 
+            launcherBtn.classList.toggle('hidden', isHidden); 
+            
+            if (isHidden) {
+                unreadChatCount = 0;
+                document.getElementById('chatUnreadBadge').classList.add('hidden');
+            }
+        }
+
+        function sendChatMessage() { 
+            const input = document.getElementById('chatInput'); 
+            const msg = input.value.trim(); 
+            if (!msg) return; 
+            if (ws && ws.readyState === WebSocket.OPEN) { 
+                ws.send(JSON.stringify({ type: 'CHAT_MESSAGE', message: msg, name: currentUserName })); 
+                appendChatMessage(currentUserName, msg); 
+                showRoomPopup(currentUserName, msg); 
+            } 
+            input.value = ''; 
+        }
+
+        function appendChatMessage(sender, message) { 
+            const container = document.getElementById('chatMessagesContainer'); 
+            if (container.querySelector('div[style*="text-align: center"]')) container.innerHTML = ''; 
+            const div = document.createElement('div'); 
+            div.style.wordBreak = 'break-all'; 
+            div.innerHTML = `<b style="color: #ef4444;">${escapeHtml(sender)}:</b> ${escapeHtml(message)}`; 
+            container.appendChild(div); 
+            container.scrollTop = container.scrollHeight; 
+            updateUnreadBadge(sender);
+        }
+
+        let mediaRecorder = null; let audioChunks = []; let isRecording = false; let pttStream = null;
+        let audioContext = null; let analyser = null; let visualizerAnim = null; let isHoldingPTT = false;
+        
+        async function startPTT() {
+            if (isHoldingPTT || isRecording) return;
+            isHoldingPTT = true;
+            try {
+                pttStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+                
+                if (!isHoldingPTT) { pttStream.getTracks().forEach(t => t.stop()); pttStream = null; return; }
+                
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(pttStream);
+                source.connect(analyser);
+                analyser.fftSize = 256;
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                
+                const canvas = document.getElementById('pttVisualizer');
+                const canvasCtx = canvas.getContext('2d');
+                canvas.classList.remove('hidden');
+                
+                function draw() {
+                    visualizerAnim = requestAnimationFrame(draw);
+                    analyser.getByteTimeDomainData(dataArray);
+                    canvasCtx.fillStyle = '#1e293b'; 
+                    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                    canvasCtx.lineWidth = 2; canvasCtx.strokeStyle = '#10b981'; 
+                    canvasCtx.beginPath();
+                    const sliceWidth = canvas.width * 1.0 / bufferLength; let x = 0;
+                    for(let i = 0; i < bufferLength; i++) {
+                        const v = dataArray[i] / 128.0; const y = v * canvas.height / 2;
+                        if(i === 0) canvasCtx.moveTo(x, y); else canvasCtx.lineTo(x, y);
+                        x += sliceWidth;
+                    }
+                    canvasCtx.lineTo(canvas.width, canvas.height / 2); canvasCtx.stroke();
+                }
+                draw();
+
+                mediaRecorder = new MediaRecorder(pttStream);
                 document.getElementById('pttButton').classList.add('recording');
                 isRecording = true;
                 
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.ondataavailable = e => { if(e.data.size > 0) audioChunks.push(e.data); };
                 mediaRecorder.onstop = () => {
                     const blob = new Blob(audioChunks, { type: 'audio/webm' });
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        if (ws && ws.readyState === WebSocket.OPEN) {
+                        if (ws && ws.readyState === WebSocket.OPEN && audioChunks.length > 0) {
                             ws.send(JSON.stringify({ type: 'VOICE_MESSAGE', audio: reader.result, name: currentUserName }));
                         }
-                        appendVoiceMessage(currentUserName, reader.result);
+                        if (audioChunks.length > 0) appendVoiceMessage(currentUserName, reader.result);
                     };
                     reader.readAsDataURL(blob);
                     audioChunks = [];
-                    isRecording = false;
-                    document.getElementById('pttButton').classList.remove('recording');
+                    if (audioContext) { audioContext.close(); audioContext = null; }
+                    cancelAnimationFrame(visualizerAnim);
+                    canvas.classList.add('hidden');
                 };
                 mediaRecorder.start();
-            } catch (err) {
-                showToast("Microphone access denied.");
-            }
+            } catch (err) { isHoldingPTT = false; showToast("Microphone access denied."); }
         }
-        function stopPTT() { if (mediaRecorder && isRecording) mediaRecorder.stop(); }
+        
+        function stopPTT() { 
+            isHoldingPTT = false;
+            if (mediaRecorder && isRecording) { mediaRecorder.stop(); isRecording = false; }
+            document.getElementById('pttButton').classList.remove('recording');
+            if (pttStream) { pttStream.getTracks().forEach(t => t.stop()); pttStream = null; }
+        }
+        
         function appendVoiceMessage(sender, audioData) {
             const container = document.getElementById('chatMessagesContainer');
             if (container.querySelector('div[style*="text-align: center"]')) container.innerHTML = '';
             const div = document.createElement('div');
-            div.innerHTML = `<b style="color: #10b981;">🎤 ${escapeHtml(sender)}:</b><br><audio src="${audioData}" controls style="height: 30px; width: 100%; margin-top: 4px;"></audio>`;
+            const autoplayAttr = sender !== currentUserName ? 'autoplay' : '';
+            div.innerHTML = `<b style="color: #10b981;">🎤 ${escapeHtml(sender)}:</b><br><audio src="${audioData}" controls ${autoplayAttr} style="height: 30px; width: 100%; margin-top: 4px;"></audio>`;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
+            updateUnreadBadge(sender);
         }
 
         // PiP Feature
@@ -293,7 +403,6 @@
         function searchImdbMovies(query) { 
             const resultsBox = document.getElementById('movieSearchResults'); 
             
-            // Twitch Stream Hook
             if (query.toLowerCase().startsWith('twitch:')) {
                 const channel = query.split(':')[1].trim();
                 if(channel.length > 2) {
@@ -332,7 +441,6 @@
                             const itemDiv = document.createElement('div'); 
                             itemDiv.className = 'movie-result-item'; 
                             
-                            // Host gets Play button, Members get Add to Queue
                             const btnText = isHosting ? 'Embed' : '+ Queue';
                             const btnAction = isHosting ? 'Play' : 'Suggest';
 
@@ -347,7 +455,6 @@
                                 if (isHosting) {
                                     loadImdbMovie(imdbId, title, posterUrl, movie.release_date ? movie.release_date.split('-')[0] : "N/A"); 
                                 } else {
-                                    // Send to Queue
                                     if (ws && ws.readyState === WebSocket.OPEN) {
                                         ws.send(JSON.stringify({ type: 'SUGGEST_QUEUE', imdbId: imdbId, title: title, posterUrl: posterUrl, year: movie.release_date ? movie.release_date.split('-')[0] : "N/A", suggester: currentUserName }));
                                     }
@@ -618,35 +725,6 @@
             checkBackgroundRoomState(); 
             document.getElementById('interactionOverlay').classList.add('hidden'); 
             notifyParent('ROOM_CLOSED'); 
-        }
-        
-        function sendChatMessage() { const input = document.getElementById('chatInput'); const msg = input.value.trim(); if (!msg) return; if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type: 'CHAT_MESSAGE', message: msg, name: currentUserName })); appendChatMessage(currentUserName, msg); showRoomPopup(currentUserName, msg); } input.value = ''; }
-        
-        function appendChatMessage(sender, message) { const container = document.getElementById('chatMessagesContainer'); if (!container) return; if (container.querySelector('div[style*="text-align: center"]')) container.innerHTML = ''; const div = document.createElement('div'); div.style.wordBreak = 'break-all'; div.innerHTML = `<b style="color: #ef4444;">${escapeHtml(sender)}:</b> ${escapeHtml(message)}`; container.appendChild(div); container.scrollTop = container.scrollHeight; }
-        
-        function clearChatBox() { document.getElementById('chatMessagesContainer').innerHTML = '<div style="color: #9ca3af; text-align: center; font-style: italic;">No messages yet. Say hello!</div>'; }
-        
-        function sendReaction(emoji) { showFloatingReaction(emoji); if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'REACTION', emoji: emoji, name: `${currentUserName} (${currentAccountId})` })); }
-        
-        function showFloatingReaction(emoji) { const el = document.createElement('div'); el.className = 'floating-reaction'; el.textContent = emoji; el.style.left = (Math.random() * (window.innerWidth - 60) + 20) + 'px'; document.body.appendChild(el); setTimeout(() => el.remove(), 2200); }
-        
-        function showRoomPopup(senderName, content) { const container = document.getElementById('roomPopupContainer'); if (!container) return; const card = document.createElement('div'); card.className = 'room-popup-card'; card.innerHTML = `<div class="popup-sender">💬 ${escapeHtml(senderName)}:</div><div class="popup-content">${escapeHtml(content)}</div>`; container.appendChild(card); setTimeout(() => card.remove(), 3500); }
-        
-        function escapeHtml(text) { const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }; return text.replace(/[&<>"']/g, m => map[m]); }
-        
-        function toggleEmojiKeyboard() { document.getElementById('phoneEmojiKeyboardSection').classList.toggle('hidden'); } function switchEmojiCategory(e, categoryKey) { activeEmojiCategory = categoryKey; document.querySelectorAll('.kb-tab-btn').forEach(btn => btn.classList.remove('active')); if (e && e.currentTarget) e.currentTarget.classList.add('active'); renderEmojiGrid(); } function renderEmojiGrid() { const grid = document.getElementById('kbEmojiGrid'); if (!grid) return; grid.innerHTML = ''; (emojiCategories[activeEmojiCategory] || []).forEach(emoji => { const btn = document.createElement('button'); btn.className = 'emoji-key'; btn.textContent = emoji; btn.onclick = () => sendReaction(emoji); grid.appendChild(btn); }); }
-        
-        function toggleLiveChatWindow() { const windowEl = document.getElementById('liveChatWindow'); const launcherBtn = document.getElementById('liveChatLauncherBtn'); const isHidden = windowEl.classList.contains('hidden'); windowEl.classList.toggle('hidden', !isHidden); launcherBtn.classList.toggle('hidden', isHidden); }
-        
-        function showLiveChatFloatingUI(show) { 
-            const container = document.getElementById('liveChatFloatingContainer'); 
-            if (container) { 
-                container.classList.toggle('hidden', !show); 
-                if (!show) { 
-                    document.getElementById('liveChatWindow').classList.add('hidden'); 
-                    document.getElementById('liveChatLauncherBtn').classList.remove('hidden'); 
-                } 
-            } 
         }
         
         function initPermanentDeviceAccount() { let permanentId = localStorage.getItem('syncbeat_permanent_device_id'); if (!permanentId) { permanentId = 'SYNC-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase(); localStorage.setItem('syncbeat_permanent_device_id', permanentId); } currentAccountId = permanentId + '_' + Math.random().toString(36).substring(2, 6); currentUserName = localStorage.getItem('syncbeat_device_name') || ''; document.getElementById('userNameInput').value = currentUserName; document.getElementById('loggedAccountBadge').textContent = `ID: ${currentAccountId}`; document.getElementById('deviceAccountDisplay').textContent = `Permanent Device ID: ${currentAccountId}`; }

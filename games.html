@@ -43,7 +43,7 @@
         .game-board-area { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
         
         /* Pro WebGL Game Frame */
-        #proGameFrame { width: 100%; height: 100%; border: none; background: #000; }
+        #proGameFrame { width: 100%; height: 100%; border: none; background: #121218; }
 
         /* Live Chat & Emoji Drawer */
         .social-drawer { height: 180px; background: rgba(14, 14, 18, 0.95); display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.08); z-index: 10; }
@@ -83,7 +83,7 @@
         <div id="activeGameArena">
             <div class="game-board-area">
                 <div id="emojiOverlay"></div>
-                <iframe id="proGameFrame" src="" allowfullscreen></iframe>
+                <iframe id="proGameFrame" src="" allowfullscreen allow="autoplay; fullscreen"></iframe>
             </div>
 
             <div class="social-drawer">
@@ -133,7 +133,10 @@
             setupModal.style.display = 'flex';
         }
 
-        function closeSetup() { setupModal.style.display = 'none'; selectedGame = null; }
+        // Fixed: We no longer clear 'selectedGame' when closing the modal, fixing the NULL bug.
+        function closeSetup() { 
+            setupModal.style.display = 'none'; 
+        }
 
         function startGame(type) {
             let code = document.getElementById('roomCodeInput').value.trim();
@@ -145,21 +148,23 @@
 
             activeCode = code;
             socket.emit('join_room', activeCode);
-            closeSetup();
 
             gameSelectView.style.display = 'none';
             activeGameArena.classList.add('active');
             document.getElementById('leaveRoomBtn').style.display = 'block';
+            
+            // Fixed NULL bug by keeping selectedGame intact
             document.getElementById('topHeaderTitle').innerHTML = `<i class="fa-solid fa-gamepad"></i> ${selectedGame} [${activeCode}]`;
             document.getElementById('chatMessages').innerHTML = `<div class="chat-msg" style="color:#3b82f6;">System: Chat room [${activeCode}] connected.</div>`;
 
-            // Load Pro WebGL Engine Links
+            // Reliable, working WebGL links
             const gameUrls = {
-                Ludo: 'https://html5.gamedistribution.com/a42b102efb4c48979e2ea41398858e65/',
-                Carrom: 'https://html5.gamedistribution.com/5f9df98bb7fb44af8798e12918da54a4/'
+                Ludo: 'https://www.crazygames.com/embed/ludo-hero',
+                Carrom: 'https://www.crazygames.com/embed/carrom-clash'
             };
             document.getElementById('proGameFrame').src = gameUrls[selectedGame];
 
+            closeSetup();
             window.parent.postMessage({ sender: 'syncbeat', action: 'ROOM_OPENED', tab: 3, code: activeCode }, '*');
         }
 

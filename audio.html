@@ -167,7 +167,7 @@
                 </div>
                 <canvas id="pttVisualizer" class="hidden" width="280" height="30" style="width:100%; height:30px; background:rgba(0,0,0,0.6); border-radius:8px; margin-bottom:8px; border: 1px solid rgb(var(--color-border)/0.5);"></canvas>
                 <div style="display: flex; gap: 6px;">
-                    <button class="ptt-btn" id="pttButton" onmousedown="startPTT()" onmouseup="stopPTT()" ontouchstart="startPTT()" ontouchend="stopPTT()" title="Hold to Talk">🎤</button>
+                    <button class="ptt-btn" id="pttButton" onmousedown="startPTT()" onmouseup="stopPTT()" onmouseleave="stopPTT()" ontouchstart="startPTT()" ontouchend="stopPTT()" ontouchcancel="stopPTT()" title="Hold to Talk">🎤</button>
                     <input type="text" id="chatInput" class="w-full bg-black/20 border border-themeBorder/60 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-themeAccent transition" style="margin-bottom:0;" placeholder="Message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
                     <button class="btn-3d" style="padding: 0 14px; background:rgb(var(--color-accent)); color:rgb(var(--color-btn-text)); border:none; border-radius:8px; font-weight: bold; font-size:12px; cursor: pointer;" onclick="sendChatMessage()">Send</button>
                 </div>
@@ -266,15 +266,18 @@
             updateUnreadBadge(sender);
         }
 
-        let mediaRecorder; let audioChunks = []; let isRecording = false; let pttStream = null;
-        let audioContext; let analyser; let visualizerAnim;
+        let mediaRecorder = null; let audioChunks = []; let isRecording = false; let pttStream = null;
+        let audioContext = null; let analyser = null; let visualizerAnim = null; let isHoldingPTT = false;
         
         async function startPTT() {
-            if (isRecording) return;
+            if (isHoldingPTT || isRecording) return;
+            isHoldingPTT = true;
             try {
                 pttStream = await navigator.mediaDevices.getUserMedia({ 
                     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
                 });
+                
+                if (!isHoldingPTT) { pttStream.getTracks().forEach(t => t.stop()); pttStream = null; return; }
                 
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
@@ -309,30 +312,33 @@
                 document.getElementById('pttButton').classList.add('recording');
                 isRecording = true;
                 
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.ondataavailable = e => { if(e.data.size > 0) audioChunks.push(e.data); };
                 mediaRecorder.onstop = () => {
                     const blob = new Blob(audioChunks, { type: 'audio/webm' });
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        if (ws && ws.readyState === WebSocket.OPEN) {
+                        if (ws && ws.readyState === WebSocket.OPEN && audioChunks.length > 0) {
                             ws.send(JSON.stringify({ type: 'VOICE_MESSAGE', audio: reader.result, name: currentUserName }));
                         }
-                        appendVoiceMessage(currentUserName, reader.result);
+                        if (audioChunks.length > 0) appendVoiceMessage(currentUserName, reader.result);
                     };
                     reader.readAsDataURL(blob);
                     audioChunks = [];
-                    isRecording = false;
-                    document.getElementById('pttButton').classList.remove('recording');
-                    
-                    if (audioContext) audioContext.close();
+                    if (audioContext) { audioContext.close(); audioContext = null; }
                     cancelAnimationFrame(visualizerAnim);
                     canvas.classList.add('hidden');
-                    if (pttStream) { pttStream.getTracks().forEach(t => t.stop()); pttStream = null; }
                 };
                 mediaRecorder.start();
-            } catch (err) { alert("Microphone access denied."); }
+            } catch (err) { isHoldingPTT = false; }
         }
-        function stopPTT() { if (mediaRecorder && isRecording) mediaRecorder.stop(); }
+        
+        function stopPTT() { 
+            isHoldingPTT = false;
+            if (mediaRecorder && isRecording) { mediaRecorder.stop(); isRecording = false; }
+            document.getElementById('pttButton').classList.remove('recording');
+            if (pttStream) { pttStream.getTracks().forEach(t => t.stop()); pttStream = null; }
+        }
+        
         function appendVoiceMessage(sender, audioData) {
             const container = document.getElementById('chatMessagesContainer');
             if (container.querySelector('div[style*="text-align: center"]')) container.innerHTML = '';

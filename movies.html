@@ -65,8 +65,8 @@
         .popup-content { font-size: 13px; font-weight: 800; word-break: break-all; }
         .floating-reaction { position: fixed; bottom: 100px; font-size: 38px; animation: floatUp 2.2s ease-out forwards; z-index: 3000; pointer-events: none; }
         @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-360px); opacity: 0; } }
-        .peer-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #fef2f2; }
-        .peer-item:last-child { border-bottom: none; }
+        .peer-item, .queue-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #fef2f2; }
+        .peer-item:last-child, .queue-item:last-child { border-bottom: none; }
         .peer-info { display: flex; align-items: center; gap: 10px; }
         .peer-icon { width: 32px; height: 32px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
         .peer-name { font-size: 13px; font-weight: 700; color: #1e1b4b; }
@@ -91,12 +91,18 @@
         .time-info { display: flex; justify-content: space-between; font-size: 11px; color: #9ca3af; margin-bottom: 10px; font-weight: 700; }
         .play-pause-lg { background: #ef4444; color: white; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: none; cursor: pointer; margin: 0 auto; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4); }
 
-        /* Fixed Live Chat Floating Styles */
+        /* Fixed Live Chat & PTT Styles */
         #liveChatFloatingContainer { position: fixed; bottom: 95px; right: 16px; z-index: 9999; }
         .floating-chat-window { width: 310px; max-width: calc(100vw - 32px); background: #ffffff; border: 1px solid #fca5a5; border-radius: 16px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
         .floating-chat-header { background: #fee2e2; padding: 10px 14px; font-weight: 800; font-size: 12px; color: #ef4444; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #fecaca; }
         .floating-minimize-btn { background: none; border: none; font-size: 16px; font-weight: bold; color: #ef4444; cursor: pointer; padding: 0 4px; }
         .live-chat-launcher { background: #ef4444; color: white; padding: 10px 18px; border-radius: 30px; font-weight: 800; font-size: 12px; border: none; box-shadow: 0 4px 15px rgba(239,68,68,0.4); cursor: pointer; }
+        
+        .ptt-btn { background: #1e293b; color: white; border: none; border-radius: 8px; padding: 0 12px; font-size: 16px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; user-select: none; }
+        .ptt-btn:active, .ptt-btn.recording { background: #ef4444; animation: pulseRed 1s infinite; }
+        @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        
+        .audio-msg { background: #f1f5f9; padding: 6px; border-radius: 12px; display: inline-block; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -116,19 +122,51 @@
             <div class="card banner-card" id="generateHostCard" onclick="startHostingSession()"><div class="banner-icon">🎬</div><div class="banner-content"><div class="banner-title">Host Movie Room</div><div class="banner-desc">Host controls movie sync for everyone</div></div><div class="banner-arrow">→</div></div>
             <div class="card" id="connectMemberCard"><div class="card-header-sm"><span>CONNECT TO HOST</span></div><div style="margin: 10px 0;"><input type="text" id="roomCodeInput" class="code-input" placeholder="Room Code (e.g. SYNC-4B9X)" maxlength="10"></div><button class="btn-purple" id="connectMemberBtn" onclick="connectToRoom()">⚡ CONNECT AS MEMBER</button></div>
         </div>
+        
         <div id="hostSessionView" class="hidden">
             <div class="header"><button class="back-btn" onclick="goBackToHome()">←</button><div><div style="font-size: 15px; font-weight: 800;" id="sessionHeaderTitle">Room Session</div><div style="font-size: 10px; color: #6b7280;" id="sessionSubtitle">Connected to Cloud</div></div></div>
             <div class="card hosting-banner"><div class="hosting-top-row"><div class="hosting-active-tag"><span class="dot"></span> <span id="sessionStatusText">ACTIVE</span></div><div style="font-size: 11px; font-weight: 700; color: #ef4444;" id="roleIndicatorBadge">Role: Host</div></div><div class="code-box"><span id="displayRoomCode">SYNC-0000</span></div><div class="code-actions"><button class="code-action-btn" onclick="copyCode()">📋 Copy Code</button><button class="code-action-btn" onclick="shareCode()">📡 Share</button></div><button class="close-session-btn" id="closeSessionBtn" onclick="closeRoomAndReturnHome()">⚡ LEAVE ROOM</button></div>
+            
             <div class="card black-player-box" id="activePlayerCardBox">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;"><div class="card-header-sm" style="margin-bottom: 0;"><span>● Room Sync Status</span></div></div>
                 <div class="player-info"><img class="album-art" id="sessionPoster" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='85'><rect width='60' height='85' fill='%23333'/></svg>" alt="Poster"><div style="overflow: hidden; flex: 1;"><div class="track-title" id="sessionTitle">No Movie Selected</div><div class="track-artist" id="sessionArtist">Waiting for Host...</div></div></div>
                 <div id="hostSyncControls" style="margin-top: 10px; border-top: 1px solid #334155; padding-top: 12px;"><div style="font-size: 11px; color: #9ca3af; text-align: center; margin-bottom: 8px; font-weight: 600;">IFRAMES REQUIRE MANUAL PLAY. TAP BELOW TO SYNC ROOM.</div><button class="countdown-btn-lg" onclick="triggerPlayCountdown()">⏱️ Send 3-Sec "Play" Countdown</button></div>
                 <div id="localSyncControls" class="hidden" style="margin-top: 10px; border-top: 1px solid #334155; padding-top: 10px;"><div class="progress-track" id="progressTrackScrubber" onmousedown="startScrubbing(event)" ontouchstart="startScrubbing(event)" onclick="seekTrack(event)"><div class="progress-fill" id="sessionFill"><div class="progress-thumb"></div></div></div><div class="time-info"><span id="sessionCurrentTime">0:00</span><span id="sessionTotalDuration">0:00</span></div><div style="display:flex; justify-content:center;"><button class="play-pause-lg" id="sessionPlayBtn" onclick="togglePlaySession()">▶</button></div></div>
             </div>
+
+            <!-- Queue Panel -->
+            <div class="card" id="queueCard" style="display: none;">
+                <div class="card-header-sm"><span>🎬 Up Next Queue</span></div>
+                <div id="queueListContainer" style="font-size: 12px;">
+                    <div style="text-align: center; color: #9ca3af; font-style: italic;">Queue is empty</div>
+                </div>
+            </div>
+            
             <div class="card" id="hostUrlControls" style="border-color: #e2e8f0; background: #fff;">
                 <div class="host-tabs" id="hostModeTabs"><button class="host-tab active" id="tabOnline" onclick="switchHostMode('online')">🌐 Online Stream</button><button class="host-tab" id="tabLocal" onclick="switchHostMode('local')">📁 Local File Sync</button></div>
-                <div class="card-header-sm" id="controllerCardHeader" style="color: #475569;"><span style="font-size: 13px;" id="modeHeaderTitle">🔍 TMDb Global Movie Search</span><button class="code-action-btn" style="background: #1e293b; color: white; border: none; padding: 6px 12px; border-radius: 8px; font-size: 10px;" onclick="toggleFullScreenMode()">📺 FULL SCREEN</button></div>
-                <div id="onlineModeUI"><div style="position: relative;"><input type="text" class="search-input" id="movieSearchInput" placeholder="Search any movie (e.g., Inception, Avengers)..." oninput="searchImdbMovies(this.value)"><div id="movieSearchResults" class="movie-search-results"></div></div><div style="font-size: 10px; color: #9ca3af; margin-top: 4px; text-align: right;">Results powered by TMDb API</div><div id="serverSelector" class="hidden" style="display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px;"><button class="server-btn active" id="srvBtn1" onclick="switchOnlineServer(1)">Server 1 (Auto)</button><button class="server-btn" id="srvBtn2" onclick="switchOnlineServer(2)">Server 2 (Multi)</button><button class="server-btn" id="srvBtn3" onclick="switchOnlineServer(3)">Server 3 (Smashy)</button><button class="server-btn" id="srvBtn4" onclick="switchOnlineServer(4)">Server 4 (2Embed)</button></div><div style="font-size: 10px; color: #ef4444; margin-top: 6px; font-weight: 700; text-align: center;">⚠️ Note: Third-party movie iframes may open popups on first click.</div><div id="iframeWrapper" class="iframe-wrapper"><iframe id="movieIframe" src="" width="100%" height="100%" frameborder="0" allowfullscreen allow="autoplay; fullscreen"></iframe></div></div>
+                <div class="card-header-sm" id="controllerCardHeader" style="color: #475569;">
+                    <span style="font-size: 13px;" id="modeHeaderTitle">🔍 TMDb Global Movie Search</span>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="code-action-btn hidden" id="pipBtn" style="background: #e2e8f0; color: #0f172a; border: none; padding: 6px; border-radius: 8px; font-size: 10px;" onclick="togglePiP()">🪟 PiP</button>
+                        <button class="code-action-btn" style="background: #1e293b; color: white; border: none; padding: 6px 12px; border-radius: 8px; font-size: 10px;" onclick="toggleFullScreenMode()">📺 FULL SCREEN</button>
+                    </div>
+                </div>
+                <div id="onlineModeUI">
+                    <div style="position: relative;">
+                        <input type="text" class="search-input" id="movieSearchInput" placeholder="Search movies OR 'twitch:channelname'..." oninput="searchImdbMovies(this.value)">
+                        <div id="movieSearchResults" class="movie-search-results"></div>
+                    </div>
+                    <div style="font-size: 10px; color: #9ca3af; margin-top: 4px; text-align: right;">Results powered by TMDb API</div>
+                    <div id="serverSelector" class="hidden" style="display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px;">
+                        <button class="server-btn active" id="srvBtn1" onclick="switchOnlineServer(1)">Server 1</button>
+                        <button class="server-btn" id="srvBtn2" onclick="switchOnlineServer(2)">Server 2</button>
+                        <button class="server-btn" id="srvBtn3" onclick="switchOnlineServer(3)">Server 3</button>
+                        <button class="server-btn" id="srvBtn4" onclick="switchOnlineServer(4)">Server 4</button>
+                        <button class="server-btn" id="srvBtn5" onclick="switchOnlineServer(5)">Twitch Live</button>
+                    </div>
+                    <div style="font-size: 10px; color: #ef4444; margin-top: 6px; font-weight: 700; text-align: center;">⚠️ Note: Third-party movie iframes may open popups on first click.</div>
+                    <div id="iframeWrapper" class="iframe-wrapper"><iframe id="movieIframe" src="" width="100%" height="100%" frameborder="0" allowfullscreen allow="autoplay; fullscreen"></iframe></div>
+                </div>
                 <div id="localModeUI" class="hidden"><input type="file" id="localVideoFileInput" accept="video/*" class="hidden" onchange="handleLocalFileSelected(this)"><div class="file-select-banner" id="localFileBanner" onclick="document.getElementById('localVideoFileInput').click()"><div style="font-size: 24px; margin-bottom: 4px;">📁</div><div style="font-size: 13px; font-weight: 800; color: #7f1d1d;">Select Downloaded Movie File</div><div style="font-size: 10px; color: #991b1b; margin-top: 2px;">Plays any MP4/MKV in any language (Hindi/Dual-Audio) with frame sync</div></div><div id="localVideoWrapper" class="iframe-wrapper"><video id="localVideoPlayer" style="width:100%; height:100%; object-fit:contain; background:#000;" playsinline preload="auto"></video></div></div>
                 <button id="exitFullScreenBtn" class="hidden" style="position: fixed; top: 20px; left: 20px; z-index: 100000000; background: rgba(0,0,0,0.85); color: white; border: 1px solid rgba(255,255,255,0.6); padding: 10px 18px; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; pointer-events: auto;" onclick="toggleFullScreenMode()">← Back to Room</button>
             </div>
@@ -137,11 +175,11 @@
         </div>
     </div>
 
-    <!-- Live Chat Section -->
+    <!-- Live Chat & PTT Section -->
     <div id="liveChatFloatingContainer" class="hidden">
         <div id="liveChatWindow" class="floating-chat-window hidden">
             <div class="floating-chat-header">
-                <span>💬 LIVE CHAT</span>
+                <span>💬 LIVE CHAT & VOICE</span>
                 <button class="floating-minimize-btn" onclick="toggleLiveChatWindow()" title="Minimize">−</button>
             </div>
             <div style="padding: 12px;">
@@ -149,7 +187,8 @@
                     <div style="color: #9ca3af; text-align: center; font-style: italic;">No messages yet. Say hello!</div>
                 </div>
                 <div style="display: flex; gap: 6px;">
-                    <input type="text" id="chatInput" class="search-input" style="margin-bottom:0;" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+                    <button class="ptt-btn" id="pttButton" onmousedown="startPTT()" onmouseup="stopPTT()" ontouchstart="startPTT()" ontouchend="stopPTT()" title="Hold to Talk">🎤</button>
+                    <input type="text" id="chatInput" class="search-input" style="margin-bottom:0;" placeholder="Message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
                     <button class="action-btn-custom" style="padding: 10px 14px; background:#ef4444; color:white; border:none; border-radius:8px; font-weight: bold; cursor: pointer;" onclick="sendChatMessage()">Send</button>
                 </div>
             </div>
@@ -168,13 +207,162 @@
         
         function forceClearRoomState() { localStorage.removeItem('syncbeat_active_room'); checkBackgroundRoomState(); if(ws) { ws.close(); ws = null; } showLiveChatFloatingUI(false); showToast("Room state successfully reset!"); goBackToHome(); notifyParent('ROOM_CLOSED'); }
         
-        function switchHostMode(mode) { activeSyncMode = mode; const tabOnline = document.getElementById('tabOnline'); const tabLocal = document.getElementById('tabLocal'); const onlineUI = document.getElementById('onlineModeUI'); const localUI = document.getElementById('localModeUI'); const headerTitle = document.getElementById('modeHeaderTitle'); const hostSyncBtn = document.getElementById('hostSyncControls'); const localSyncControls = document.getElementById('localSyncControls'); if (mode === 'online') { tabOnline.classList.add('active'); tabLocal.classList.remove('active'); onlineUI.classList.remove('hidden'); localUI.classList.add('hidden'); headerTitle.textContent = "🔍 TMDb Global Movie Search"; hostSyncBtn.classList.remove('hidden'); localSyncControls.classList.add('hidden'); stopLocalPlayer(); } else { tabLocal.classList.add('active'); tabOnline.classList.remove('active'); localUI.classList.remove('hidden'); onlineUI.classList.add('hidden'); headerTitle.textContent = "📁 Select Local Device File"; hostSyncBtn.classList.add('hidden'); localSyncControls.classList.remove('hidden'); const iframe = document.getElementById('movieIframe'); if (iframe) iframe.src = ""; } if (!isHosting) { document.getElementById('hostModeTabs').classList.add('hidden'); } }
+        function switchHostMode(mode) { 
+            activeSyncMode = mode; 
+            const tabOnline = document.getElementById('tabOnline'); const tabLocal = document.getElementById('tabLocal'); 
+            const onlineUI = document.getElementById('onlineModeUI'); const localUI = document.getElementById('localModeUI'); 
+            const headerTitle = document.getElementById('modeHeaderTitle'); 
+            const hostSyncBtn = document.getElementById('hostSyncControls'); const localSyncControls = document.getElementById('localSyncControls'); 
+            const pipBtn = document.getElementById('pipBtn');
+            
+            if (mode === 'online') { 
+                tabOnline.classList.add('active'); tabLocal.classList.remove('active'); 
+                onlineUI.classList.remove('hidden'); localUI.classList.add('hidden'); 
+                headerTitle.textContent = "🔍 TMDb Global Movie Search"; 
+                hostSyncBtn.classList.remove('hidden'); localSyncControls.classList.add('hidden'); 
+                pipBtn.classList.add('hidden');
+                stopLocalPlayer(); 
+            } else { 
+                tabLocal.classList.add('active'); tabOnline.classList.remove('active'); 
+                localUI.classList.remove('hidden'); onlineUI.classList.add('hidden'); 
+                headerTitle.textContent = "📁 Select Local Device File"; 
+                hostSyncBtn.classList.add('hidden'); localSyncControls.classList.remove('hidden'); 
+                pipBtn.classList.remove('hidden');
+                const iframe = document.getElementById('movieIframe'); if (iframe) iframe.src = ""; 
+            } 
+            if (!isHosting) { document.getElementById('hostModeTabs').classList.add('hidden'); } 
+        }
+        
+        // PTT Feature
+        let mediaRecorder; let audioChunks = []; let isRecording = false;
+        async function startPTT() {
+            if (isRecording) return;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                document.getElementById('pttButton').classList.add('recording');
+                isRecording = true;
+                
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ type: 'VOICE_MESSAGE', audio: reader.result, name: currentUserName }));
+                        }
+                        appendVoiceMessage(currentUserName, reader.result);
+                    };
+                    reader.readAsDataURL(blob);
+                    audioChunks = [];
+                    isRecording = false;
+                    document.getElementById('pttButton').classList.remove('recording');
+                };
+                mediaRecorder.start();
+            } catch (err) {
+                showToast("Microphone access denied.");
+            }
+        }
+        function stopPTT() { if (mediaRecorder && isRecording) mediaRecorder.stop(); }
+        function appendVoiceMessage(sender, audioData) {
+            const container = document.getElementById('chatMessagesContainer');
+            if (container.querySelector('div[style*="text-align: center"]')) container.innerHTML = '';
+            const div = document.createElement('div');
+            div.innerHTML = `<b style="color: #10b981;">🎤 ${escapeHtml(sender)}:</b><br><audio src="${audioData}" controls style="height: 30px; width: 100%; margin-top: 4px;"></audio>`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // PiP Feature
+        async function togglePiP() {
+            if (activeSyncMode === 'local' && streamflixPlayer) {
+                try {
+                    if (document.pictureInPictureElement) {
+                        await document.exitPictureInPicture();
+                    } else {
+                        await streamflixPlayer.requestPictureInPicture();
+                    }
+                } catch (e) {
+                    showToast("PiP not supported on this device/browser.");
+                }
+            }
+        }
         
         function unlockMediaContext() { document.getElementById('interactionOverlay').classList.add('hidden'); if (activeSyncMode === 'local' && streamflixPlayer) { streamflixPlayer.muted = false; streamflixPlayer.play().catch(e => console.warn(e)); } showToast("Connected to Room Media!"); }
         
-        function searchImdbMovies(query) { const resultsBox = document.getElementById('movieSearchResults'); if (!query || query.trim().length < 2) { resultsBox.style.display = 'none'; return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(async () => { try { const url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query.trim())}`; const res = await fetch(url); if (!res.ok) throw new Error("TMDb API failed"); const data = await res.json(); const results = data.results || []; resultsBox.innerHTML = ''; if (results.length === 0) { resultsBox.innerHTML = '<div style="padding:8px; font-size:12px; color:#6b7280; text-align:center;">No titles found.</div>'; } else { results.forEach(movie => { const title = movie.title || movie.name || "Unknown Title"; const year = movie.release_date ? `(${movie.release_date.split('-')[0]})` : ""; const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w92${movie.poster_path}` : "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='60'><rect width='40' height='60' fill='%23e2e8f0'/></svg>"; const itemDiv = document.createElement('div'); itemDiv.className = 'movie-result-item'; itemDiv.innerHTML = `<img src="${posterUrl}" class="movie-result-poster" alt="poster"><div class="movie-result-info"><div class="movie-result-title">${escapeHtml(title)}</div><div class="movie-result-year">Movie ${escapeHtml(year)}</div></div><button class="code-action-btn" style="padding:6px 10px; font-size:10px; background:#ef4444; color:white; border:none;">Embed</button>`; itemDiv.onclick = async () => { resultsBox.style.display = 'none'; document.getElementById('movieSearchInput').value = ""; const externalUrl = `https://api.themoviedb.org/3/movie/${movie.id}/external_ids?api_key=${TMDB_API_KEY}`; const extRes = await fetch(externalUrl); const extData = await extRes.json(); const imdbId = extData.imdb_id || `tmdb-${movie.id}`; loadImdbMovie(imdbId, title, posterUrl, movie.release_date ? movie.release_date.split('-')[0] : "N/A"); }; resultsBox.appendChild(itemDiv); }); } resultsBox.style.display = 'block'; } catch (e) { resultsBox.innerHTML = '<div style="padding:8px; font-size:11px; color:#ef4444;">Search connection failed.</div>'; resultsBox.style.display = 'block'; } }, 300); }
+        function searchImdbMovies(query) { 
+            const resultsBox = document.getElementById('movieSearchResults'); 
+            
+            // Twitch Stream Hook
+            if (query.toLowerCase().startsWith('twitch:')) {
+                const channel = query.split(':')[1].trim();
+                if(channel.length > 2) {
+                    resultsBox.innerHTML = '';
+                    const itemDiv = document.createElement('div'); 
+                    itemDiv.className = 'movie-result-item'; 
+                    itemDiv.innerHTML = `<img src="https://upload.wikimedia.org/wikipedia/commons/d/d3/Twitch_Glitch_Logo_Purple.svg" class="movie-result-poster" alt="twitch" style="object-fit:contain; background:#9146FF;"><div class="movie-result-info"><div class="movie-result-title">${escapeHtml(channel)}</div><div class="movie-result-year" style="color:#ef4444;">🔴 LIVE STREAM</div></div><button class="code-action-btn" style="padding:6px 10px; font-size:10px; background:#ef4444; color:white; border:none;">Play</button>`; 
+                    itemDiv.onclick = () => {
+                        resultsBox.style.display = 'none'; document.getElementById('movieSearchInput').value = "";
+                        loadImdbMovie(channel, `${channel}'s Stream`, 'https://upload.wikimedia.org/wikipedia/commons/d/d3/Twitch_Glitch_Logo_Purple.svg', 'LIVE');
+                        switchOnlineServer(5);
+                    };
+                    resultsBox.appendChild(itemDiv);
+                    resultsBox.style.display = 'block';
+                }
+                return;
+            }
+
+            if (!query || query.trim().length < 2) { resultsBox.style.display = 'none'; return; } 
+            clearTimeout(searchTimeout); 
+            searchTimeout = setTimeout(async () => { 
+                try { 
+                    const url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query.trim())}`; 
+                    const res = await fetch(url); 
+                    if (!res.ok) throw new Error("TMDb API failed"); 
+                    const data = await res.json(); 
+                    const results = data.results || []; 
+                    resultsBox.innerHTML = ''; 
+                    if (results.length === 0) { resultsBox.innerHTML = '<div style="padding:8px; font-size:12px; color:#6b7280; text-align:center;">No titles found.</div>'; } 
+                    else { 
+                        results.forEach(movie => { 
+                            const title = movie.title || movie.name || "Unknown Title"; 
+                            const year = movie.release_date ? `(${movie.release_date.split('-')[0]})` : ""; 
+                            const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w92${movie.poster_path}` : "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='60'><rect width='40' height='60' fill='%23e2e8f0'/></svg>"; 
+                            
+                            const itemDiv = document.createElement('div'); 
+                            itemDiv.className = 'movie-result-item'; 
+                            
+                            // Host gets Play button, Members get Add to Queue
+                            const btnText = isHosting ? 'Embed' : '+ Queue';
+                            const btnAction = isHosting ? 'Play' : 'Suggest';
+
+                            itemDiv.innerHTML = `<img src="${posterUrl}" class="movie-result-poster" alt="poster"><div class="movie-result-info"><div class="movie-result-title">${escapeHtml(title)}</div><div class="movie-result-year">Movie ${escapeHtml(year)}</div></div><button class="code-action-btn" style="padding:6px 10px; font-size:10px; background:#ef4444; color:white; border:none;">${btnText}</button>`; 
+                            itemDiv.onclick = async () => { 
+                                resultsBox.style.display = 'none'; document.getElementById('movieSearchInput').value = ""; 
+                                const externalUrl = `https://api.themoviedb.org/3/movie/${movie.id}/external_ids?api_key=${TMDB_API_KEY}`; 
+                                const extRes = await fetch(externalUrl); 
+                                const extData = await extRes.json(); 
+                                const imdbId = extData.imdb_id || `tmdb-${movie.id}`; 
+                                
+                                if (isHosting) {
+                                    loadImdbMovie(imdbId, title, posterUrl, movie.release_date ? movie.release_date.split('-')[0] : "N/A"); 
+                                } else {
+                                    // Send to Queue
+                                    if (ws && ws.readyState === WebSocket.OPEN) {
+                                        ws.send(JSON.stringify({ type: 'SUGGEST_QUEUE', imdbId: imdbId, title: title, posterUrl: posterUrl, year: movie.release_date ? movie.release_date.split('-')[0] : "N/A", suggester: currentUserName }));
+                                    }
+                                    showToast("Suggested to Host's Queue!");
+                                }
+                            }; 
+                            resultsBox.appendChild(itemDiv); 
+                        }); 
+                    } 
+                    resultsBox.style.display = 'block'; 
+                } catch (e) { resultsBox.innerHTML = '<div style="padding:8px; font-size:11px; color:#ef4444;">Search connection failed.</div>'; resultsBox.style.display = 'block'; } 
+            }, 300); 
+        }
         
-        function loadImdbMovie(imdbId, title, posterUrl, year) { if (!isHosting) return; switchHostMode('online'); currentOnlineImdbId = imdbId; currentOnlineTitle = title; currentOnlinePoster = posterUrl; currentOnlineYear = year; document.getElementById('serverSelector').classList.remove('hidden'); switchOnlineServer(1); }
+        function loadImdbMovie(imdbId, title, posterUrl, year) { switchHostMode('online'); currentOnlineImdbId = imdbId; currentOnlineTitle = title; currentOnlinePoster = posterUrl; currentOnlineYear = year; document.getElementById('serverSelector').classList.remove('hidden'); switchOnlineServer(activeOnlineServer > 4 ? 1 : activeOnlineServer); }
         
         function switchOnlineServer(serverNum) { if (!isHosting || !currentOnlineImdbId) return; activeOnlineServer = serverNum; document.querySelectorAll('.server-btn').forEach(btn => btn.classList.remove('active')); document.getElementById('srvBtn' + serverNum).classList.add('active'); applyOnlineServer(serverNum); }
         
@@ -184,6 +372,7 @@
             else if (serverNum === 2) embedUrl = `https://multiembed.mov/?video_id=${currentOnlineImdbId}&tmdb=0`; 
             else if (serverNum === 3) embedUrl = `https://player.smashy.stream/movie/${currentOnlineImdbId}`; 
             else if (serverNum === 4) embedUrl = `https://www.2embed.cc/embed/${currentOnlineImdbId}`; 
+            else if (serverNum === 5) embedUrl = `https://player.twitch.tv/?channel=${currentOnlineImdbId}&parent=${window.location.hostname}`;
             
             updatePlayerUI(currentOnlineTitle, currentOnlineYear, currentOnlinePoster, embedUrl); 
             
@@ -198,7 +387,7 @@
                     embedUrl: embedUrl 
                 })); 
             } 
-            showToast(`Loaded Server ${serverNum}! Use Countdown to sync play.`); 
+            showToast(serverNum === 5 ? "Live Stream Sync Active" : `Loaded Server ${serverNum}! Use Countdown to sync.`); 
         }
         
         function updatePlayerUI(title, year, posterUrl, embedUrl) { document.getElementById('sessionTitle').textContent = title; document.getElementById('sessionArtist').textContent = `Released: ${year}`; document.getElementById('sessionPoster').src = posterUrl; document.getElementById('movieIframe').src = embedUrl; notifyParent('MEDIA_PLAYING'); }
@@ -244,12 +433,43 @@
         
         function toggleFullScreenMode() { isStreamflixFullScreen = !isStreamflixFullScreen; const sessionView = document.getElementById('hostSessionView'); const hostUrlControls = document.getElementById('hostUrlControls'); const wrapper = activeSyncMode === 'online' ? document.getElementById('iframeWrapper') : document.getElementById('localVideoWrapper'); const exitBtn = document.getElementById('exitFullScreenBtn'); for (let child of sessionView.children) { if (child !== hostUrlControls) child.classList.toggle('hidden', isStreamflixFullScreen); } document.getElementById('controllerCardHeader').classList.toggle('hidden', isStreamflixFullScreen); if(activeSyncMode === 'online') { document.getElementById('movieSearchInput').classList.toggle('hidden', isStreamflixFullScreen); document.getElementById('serverSelector').classList.toggle('hidden', isStreamflixFullScreen || !isHosting); } if(activeSyncMode === 'local') document.getElementById('localFileBanner').classList.toggle('hidden', isStreamflixFullScreen); document.getElementById('hostModeTabs').classList.toggle('hidden', isStreamflixFullScreen || !isHosting); if (isStreamflixFullScreen) { hostUrlControls.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:999999; background:#000; margin:0; padding:0; border:none; box-shadow:none;"; wrapper.style.cssText = "width:100vw; height:100vh; border-radius:0; margin:0;"; exitBtn.classList.remove('hidden'); notifyParent(activeSyncMode === 'online' ? 'MEDIA_PLAYING' : (isSessionPlaying ? 'MEDIA_PLAYING' : 'MEDIA_PAUSED')); } else { hostUrlControls.style.cssText = "position:relative; background:#ffffff; margin:0 0 14px 0; padding:16px; border:1px solid #fecaca; border-radius:20px;"; wrapper.style.cssText = "position:relative; width:100%; height:240px; border-radius:12px; margin-top:8px; border:1px solid #475569;"; exitBtn.classList.add('hidden'); notifyParent(activeSyncMode === 'online' ? 'MEDIA_PLAYING' : (isSessionPlaying ? 'MEDIA_PLAYING' : 'MEDIA_PAUSED')); } }
         
+        // Queue Logic
+        let mediaQueue = [];
+        function handleQueueRequest(data) {
+            if (!isHosting) return;
+            document.getElementById('queueCard').style.display = 'block';
+            mediaQueue.push(data);
+            renderQueue();
+            showToast(`${data.suggester} added ${data.title} to Queue!`);
+        }
+
+        function renderQueue() {
+            const container = document.getElementById('queueListContainer');
+            container.innerHTML = '';
+            if (mediaQueue.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #9ca3af; font-style: italic;">Queue is empty</div>';
+                document.getElementById('queueCard').style.display = 'none';
+                return;
+            }
+            mediaQueue.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'queue-item';
+                div.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><img src="${item.posterUrl}" style="width:24px; height:36px; border-radius:4px;"><div style="font-weight:700; color:#1e1b4b;">${escapeHtml(item.title)} <span style="font-size:9px; color:#6b7280; font-weight:normal;">via ${escapeHtml(item.suggester)}</span></div></div><button class="code-action-btn" style="padding:4px 8px; font-size:10px; background:#10b981; color:white; border:none;">Play</button>`;
+                div.onclick = () => {
+                    loadImdbMovie(item.imdbId, item.title, item.posterUrl, item.year);
+                    mediaQueue.splice(index, 1);
+                    renderQueue();
+                };
+                container.appendChild(div);
+            });
+        }
+
         function handleIncomingControl(data) { 
             if (data.type === 'LOAD_VIDEO') { 
                 if (data.mode === 'online') {
                     switchHostMode('online'); 
                     updatePlayerUI(data.title, data.year, data.posterUrl, data.embedUrl); 
-                    showToast("Host selected an online movie!"); 
+                    showToast("Host changed media!"); 
                 } else if (data.mode === 'local') {
                     switchHostMode('local'); 
                     showRoomPopup("Host", `Started watching: ${data.fileName}`); 
@@ -276,6 +496,10 @@
             } else if (data.type === 'CHAT_MESSAGE') { 
                 appendChatMessage(data.name || 'User', data.message); 
                 showRoomPopup(data.name || 'User', data.message); 
+            } else if (data.type === 'VOICE_MESSAGE') {
+                appendVoiceMessage(data.name || 'User', data.audio);
+            } else if (data.type === 'SUGGEST_QUEUE') {
+                handleQueueRequest(data);
             } else if (data.type === 'REACTION') { 
                 showFloatingReaction(data.emoji); 
             } else if (data.type === 'ROOM_NOT_FOUND') { 
@@ -291,7 +515,17 @@
         
         function updateLocalPeerDisplay(role) { const initialNameEl = document.getElementById('initialPeerName'); const roleTag = document.getElementById('peerRoleTag'); if (initialNameEl) initialNameEl.textContent = currentUserName || "User"; if (roleTag) { roleTag.textContent = role; roleTag.style.background = role === 'HOST' ? '#dcfce7' : '#fef2f2'; roleTag.style.color = role === 'HOST' ? '#16a34a' : '#ef4444'; } }
         
-        function applyRoleUI() { const isHost = isHosting; document.getElementById('movieSearchInput').classList.toggle('hidden', !isHost); document.getElementById('hostModeTabs').classList.toggle('hidden', !isHost); document.getElementById('sessionPlayBtn').disabled = !isHost; if (!isHost) { document.getElementById('hostSyncControls').classList.add('hidden'); document.getElementById('serverSelector').classList.add('hidden'); } }
+        function applyRoleUI() { 
+            const isHost = isHosting; 
+            document.getElementById('movieSearchInput').placeholder = isHost ? "Search movies OR 'twitch:channelname'..." : "Search movies to add to Host's Queue...";
+            document.getElementById('hostModeTabs').classList.toggle('hidden', !isHost); 
+            document.getElementById('sessionPlayBtn').disabled = !isHost; 
+            
+            if (!isHost) { 
+                document.getElementById('hostSyncControls').classList.add('hidden'); 
+                document.getElementById('serverSelector').classList.add('hidden'); 
+            } 
+        }
         
         let previousPeerCount = 0;
         function handlePeerListUpdate(newPeers) { 

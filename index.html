@@ -13,7 +13,10 @@
         .auth-card { background: #121218; width: 100%; max-width: 320px; border-radius: 20px; padding: 24px; text-align: center; border: 1px solid rgba(59, 130, 246, 0.4); box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
         .auth-input { width: 100%; background: #000; border: 1px solid #333; border-radius: 10px; padding: 14px; color: #fff; margin: 20px 0; font-size: 16px; text-align: center; outline: none; }
         .auth-btn { width: 100%; padding: 14px; border-radius: 10px; background: #3b82f6; color: #fff; font-weight: 800; border: none; font-size: 14px; cursor: pointer; }
-        .profile-badge { position: fixed; top: 15px; left: 15px; background: rgba(255,255,255,0.1); padding: 8px 14px; border-radius: 20px; color: #fff; font-size: 11px; font-weight: 800; z-index: 10000; border: 1px solid rgba(255,255,255,0.2); }
+        
+        /* Fixed: Profile badge stays inside active frame or hides during game match */
+        .profile-badge { position: fixed; top: 15px; left: 15px; background: rgba(18, 18, 24, 0.85); backdrop-filter: blur(10px); padding: 8px 14px; border-radius: 20px; color: #fff; font-size: 11px; font-weight: 800; z-index: 5; border: 1px solid rgba(255,255,255,0.15); transition: opacity 0.3s; }
+        .profile-badge.hide { opacity: 0; pointer-events: none; }
 
         #slider { display: flex; width: 500vw; height: 100vh; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
         .frame-wrapper { width: 100vw; height: 100vh; }
@@ -89,20 +92,24 @@
         function loadProfileUI() {
             const badge = document.getElementById('profileBadge');
             badge.style.display = 'block';
-            badge.innerHTML = `<i class="fa-solid fa-user"></i> ${playerProfile.name} <span style="color:#94a3b8; font-weight:normal; margin-left:4px;">${playerProfile.id}</span>`;
+            badge.innerHTML = `<i class="fa-solid fa-user" style="color:#3b82f6;"></i> ${playerProfile.name} <span style="color:#94a3b8; font-size:10px;">${playerProfile.id}</span>`;
         }
 
         window.addEventListener('message', (e) => {
             if (e.data.sender !== 'syncbeat') return;
-            const tabBar =- document.getElementById('tabBar');
+            const tabBar = document.getElementById('tabBar');
+            const profileBadge = document.getElementById('profileBadge');
+            
             if (e.data.action === 'ROOM_OPENED') {
                 activeRoomTab = e.data.tab;
                 activeRoomCode = e.data.code;
-                document.getElementById('tabBar').classList.add('hide');
+                tabBar.classList.add('hide');
+                profileBadge.classList.add('hide');
             } else if (e.data.action === 'ROOM_CLOSED') {
                 activeRoomTab = null;
                 activeRoomCode = null;
-                document.getElementById('tabBar').classList.remove('hide');
+                tabBar.classList.remove('hide');
+                profileBadge.classList.remove('hide');
             }
         });
 

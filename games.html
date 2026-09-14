@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SyncBeat Arcade & Chat</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body, html { width: 100vw; height: 100vh; background: #07070a; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* Top Header */
+        .arcade-header { padding: 14px 20px; background: rgba(18,18,24,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+        .arcade-title { font-size: 14px; font-weight: 900; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+
+        /* Main Content Split */
+        .arcade-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 80px; }
+
+        /* Lobby View */
+        #lobbyView { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+        .glass-card { background: rgba(22, 22, 32, 0.75); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .card-header { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; color: #3b82f6; }
+        
+        .input-glass { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #fff; outline: none; margin-bottom: 10px; }
+        .btn-glass { width: 100%; padding: 12px; border-radius: 12px; font-size: 12px; font-weight: 800; cursor: pointer; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; gap: 8px; background: #3b82f6; color: #fff; }
+
+        .games-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+        .game-opt { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .game-opt.selected { background: rgba(59, 130, 246, 0.25); border-color: #3b82f6; }
+        .game-opt i { font-size: 20px; color: #3b82f6; margin-bottom: 6px; display: block; }
+        .game-opt span { font-size: 11px; font-weight: 700; }
+
+        /* Active Room & Game Arena View */
+        #gameRoomView { flex: 1; display: none; flex-direction: column; height: 100%; }
+        #gameRoomView.active { display: flex; }
+
+        .arena-container { flex: 1; background: #000; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        #gameFrame { width: 100%; height: 100%; border: none; }
+
+        /* Live Chat Drawer inside Games */
+        .chat-container { height: 160px; background: rgba(14, 14, 18, 0.95); display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.08); }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+        .chat-msg { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 10px; max-width: 80%; word-break: break-word; }
+        .chat-msg.self { background: rgba(59, 130, 246, 0.25); align-self: flex-end; }
+        
+        .chat-input-bar { padding: 8px 12px; display: flex; gap: 8px; background: rgba(0,0,0,0.3); }
+        .chat-input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 12px; color: #fff; font-size: 12px; outline: none; }
+        .chat-send { background: #3b82f6; border: none; color: #fff; padding: 0 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="arcade-header">
+        <div class="arcade-title"><i class="fa-solid fa-gamepad"></i> SyncBeat Arcade</div>
+        <button id="leaveRoomBtn" style="display:none; background:#ef4444; border:none; color:#fff; padding:6px 12px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;" onclick="leaveRoom()">Close Room</button>
+    </div>
+
+    <div class="arcade-body">
+        <!-- LOBBY -->
+        <div id="lobbyView">
+            <div class="glass-card">
+                <div class="card-header">Select Multiplayer Game</div>
+                <div class="games-grid">
+                    <div class="game-opt selected" onclick="selectGame(this, 'ludo')">
+                        <i class="fa-solid fa-chess-board"></i>
+                        <span>Ludo Battle</span>
+                    </div>
+                    <div class="game-opt" onclick="selectGame(this, 'tictactoe')">
+                        <i class="fa-solid fa-xmark"></i>
+                        <span>Tic Tac Toe</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="card-header">Room Control</div>
+                <input type="text" id="roomCodeInput" class="input-glass" placeholder="Enter Room Code (e.g. GAME-99)">
+                <button class="btn-glass" onclick="hostGameRoom()">Host / Join Game Room</button>
+            </div>
+        </div>
+
+        <!-- ACTIVE GAME ROOM & CHAT -->
+        <div id="gameRoomView">
+            <div class="arena-container">
+                <iframe id="gameFrame" src=""></iframe>
+            </div>
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-msg" style="color: #94a3b8;">System: Welcome to SyncBeat Game Room! Chat and play simultaneously.</div>
+                </div>
+                <div class="chat-input-bar">
+                    <input type="text" id="chatInput" class="chat-input" placeholder="Type a message to friends..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+                    <button class="chat-send" onclick="sendChatMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSelectedGame = 'ludo';
+        let activeCode = null;
+
+        function selectGame(element, gameKey) {
+            document.querySelectorAll('.game-opt').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            currentSelectedGame = gameKey;
+        }
+
+        function hostGameRoom() {
+            const code = document.getElementById('roomCodeInput').value.trim();
+            if (!code) {
+                alert('Please enter a valid Room Code!');
+                return;
+            }
+            activeCode = code;
+
+            // Notify parent shell to lock other tabs
+            window.parent.postMessage({ sender: 'syncbeat', action: 'ROOM_OPENED', tab: 3, code: activeCode }, '*');
+
+            // Load Game URL based on selection
+            const gameUrls = {
+                ludo: 'https://html5.gamedistribution.com/a42b102efb4c48979e2ea41398858e65/',
+                tictactoe: 'https://html5.gamedistribution.com/3932824cfd834c8a8344e7c3c5ee9a07/'
+            };
+
+            document.getElementById('gameFrame').src = gameUrls[currentSelectedGame];
+            document.getElementById('lobbyView').style.display = 'none';
+            document.getElementById('gameRoomView').classList.add('active');
+            document.getElementById('leaveRoomBtn').style.display = 'block';
+        }
+
+        function leaveRoom() {
+            activeCode = null;
+            document.getElementById('gameFrame').src = '';
+            document.getElementById('gameRoomView').classList.remove('active');
+            document.getElementById('lobbyView').style.display = 'flex';
+            document.getElementById('leaveRoomBtn').style.display = 'none';
+
+            // Notify parent shell to unlock tabs
+            window.parent.postMessage({ sender: 'syncbeat', action: 'ROOM_CLOSED' }, '*');
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const box = document.getElementById('chatMessages');
+            box.innerHTML += `<div class="chat-msg self"><b>You:</b> ${text}</div>`;
+            input.value = '';
+            box.scrollTop = box.scrollHeight;
+        }
+    </script>
+</body>
+</html>
+

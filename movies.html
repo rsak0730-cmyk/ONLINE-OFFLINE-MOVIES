@@ -70,7 +70,6 @@
         .peer-info { display: flex; align-items: center; gap: 10px; }
         .peer-icon { width: 32px; height: 32px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
         .peer-name { font-size: 13px; font-weight: 700; color: #1e1b4b; }
-        .peer-meta { font-size: 10px; color: #6b7280; }
         .sync-tag { background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
         .code-input { width: 100%; background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px 16px; border-radius: 14px; font-size: 15px; font-weight: 700; color: #ef4444; box-sizing: border-box; outline: none; text-align: center; }
         .btn-purple { background: #ef4444; color: white; border: none; width: 100%; padding: 14px; border-radius: 14px; font-size: 14px; font-weight: 700; cursor: pointer; }
@@ -91,6 +90,13 @@
         .progress-thumb { position: absolute; right: -6px; top: -4px; width: 16px; height: 16px; background: #ef4444; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.25); pointer-events: none; }
         .time-info { display: flex; justify-content: space-between; font-size: 11px; color: #9ca3af; margin-bottom: 10px; font-weight: 700; }
         .play-pause-lg { background: #ef4444; color: white; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: none; cursor: pointer; margin: 0 auto; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4); }
+
+        /* Fixed Live Chat Floating Styles */
+        #liveChatFloatingContainer { position: fixed; bottom: 95px; right: 16px; z-index: 9999; }
+        .floating-chat-window { width: 310px; max-width: calc(100vw - 32px); background: #ffffff; border: 1px solid #fca5a5; border-radius: 16px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+        .floating-chat-header { background: #fee2e2; padding: 10px 14px; font-weight: 800; font-size: 12px; color: #ef4444; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #fecaca; }
+        .floating-minimize-btn { background: none; border: none; font-size: 16px; font-weight: bold; color: #ef4444; cursor: pointer; padding: 0 4px; }
+        .live-chat-launcher { background: #ef4444; color: white; padding: 10px 18px; border-radius: 30px; font-weight: 800; font-size: 12px; border: none; box-shadow: 0 4px 15px rgba(239,68,68,0.4); cursor: pointer; }
     </style>
 </head>
 <body>
@@ -127,19 +133,40 @@
                 <button id="exitFullScreenBtn" class="hidden" style="position: fixed; top: 20px; left: 20px; z-index: 100000000; background: rgba(0,0,0,0.85); color: white; border: 1px solid rgba(255,255,255,0.6); padding: 10px 18px; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; pointer-events: auto;" onclick="toggleFullScreenMode()">← Back to Room</button>
             </div>
             <div class="card" style="margin-top: 14px;"><div class="card-header-sm" style="color:#ef4444;"><span>Room Reactions</span></div><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><div style="font-size: 12px; font-weight:700; color:#1e293b;">Quick Emoji Tap:</div><button class="code-action-btn" style="padding: 4px 10px; font-size: 10px; border-color:#cbd5e1; color:#475569; background:#f8fafc;" onclick="toggleEmojiKeyboard()">⌨️ Expand</button></div><div class="reactions-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;"><button class="reaction-btn" style="font-size:24px; background:none; border:none;" onclick="sendReaction('😂')">😂</button><button class="reaction-btn" style="font-size:24px; background:none; border:none;" onclick="sendReaction('🍿')">🍿</button><button class="reaction-btn" style="font-size:24px; background:none; border:none;" onclick="sendReaction('😱')">😱</button><button class="reaction-btn" style="font-size:24px; background:none; border:none;" onclick="sendReaction('🤯')">🤯</button><button class="reaction-btn" style="font-size:24px; background:none; border:none;" onclick="sendReaction('💖')">💖</button></div><div id="phoneEmojiKeyboardSection" class="emoji-keyboard-container hidden"><div class="keyboard-tabs-row" id="kbCategoryTabs"><button class="kb-tab-btn active" onclick="switchEmojiCategory(event, 'smileys')">😀 Smileys</button><button class="kb-tab-btn" onclick="switchEmojiCategory(event, 'gestures')">👋 Gestures</button><button class="kb-tab-btn" onclick="switchEmojiCategory(event, 'animals')">🐶 Animals</button><button class="kb-tab-btn" onclick="switchEmojiCategory(event, 'food')">🍿 Food</button><button class="kb-tab-btn" onclick="switchEmojiCategory(event, 'hearts')">❤️ Hearts</button></div><div class="emoji-grid-box" id="kbEmojiGrid"></div></div></div>
-            <div class="card"><div class="card-header-sm" style="color:#ef4444;"><span>IN THIS ROOM</span></div><div id="peerListContainer"><div class="peer-item"><div class="peer-info"><div class="peer-icon" style="background:#fee2e2; color:#ef4444;">👤</div><div><div class="peer-name" id="initialPeerName">User</div><div class="peer-meta" id="initialPeerId">ID: SYNC-0000</div></div></div><span class="sync-tag" id="peerRoleTag">PEER</span></div></div></div>
+            <div class="card"><div class="card-header-sm" style="color:#ef4444;"><span>IN THIS ROOM</span></div><div id="peerListContainer"><div class="peer-item"><div class="peer-info"><div class="peer-icon" style="background:#fee2e2; color:#ef4444;">👤</div><div><div class="peer-name" id="initialPeerName">User</div></div></div><span class="sync-tag" id="peerRoleTag">PEER</span></div></div></div>
         </div>
     </div>
-    <div id="liveChatFloatingContainer" class="hidden"><div id="liveChatWindow" class="floating-chat-window hidden"><div class="floating-chat-header"><span>💬 LIVE_CHAT</span><button class="floating-minimize-btn" onclick="toggleLiveChatWindow()" title="Minimize to button">−</button></div><div style="padding: 12px;"><div id="chatMessagesContainer" style="height: 160px; overflow-y: auto; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; margin-bottom: 8px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;"><div style="color: #9ca3af; text-align: center; font-style: italic;">No messages yet. Say hello!</div></div><div style="display: flex; gap: 6px;"><input type="text" id="chatInput" class="search-input" style="margin-bottom:0;" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChatMessage()"><button class="action-btn-custom" style="padding: 10px 14px; background:#ef4444; color:white; border:none; border-radius:8px;" onclick="sendChatMessage()">Send</button></div></div></div><button id="liveChatLauncherBtn" class="live-chat-launcher" onclick="toggleLiveChatWindow()" style="position:fixed; bottom:100px; right:20px; background:#ef4444; color:white; padding:12px 20px; border-radius:30px; font-weight:bold; border:none; box-shadow:0 4px 15px rgba(239,68,68,0.4); z-index:99999; cursor:pointer;">💬 LIVE_CHAT</button></div>
+
+    <!-- Live Chat Section -->
+    <div id="liveChatFloatingContainer" class="hidden">
+        <div id="liveChatWindow" class="floating-chat-window hidden">
+            <div class="floating-chat-header">
+                <span>💬 LIVE CHAT</span>
+                <button class="floating-minimize-btn" onclick="toggleLiveChatWindow()" title="Minimize">−</button>
+            </div>
+            <div style="padding: 12px;">
+                <div id="chatMessagesContainer" style="height: 160px; overflow-y: auto; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; margin-bottom: 8px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+                    <div style="color: #9ca3af; text-align: center; font-style: italic;">No messages yet. Say hello!</div>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="chatInput" class="search-input" style="margin-bottom:0;" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+                    <button class="action-btn-custom" style="padding: 10px 14px; background:#ef4444; color:white; border:none; border-radius:8px; font-weight: bold; cursor: pointer;" onclick="sendChatMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+        <button id="liveChatLauncherBtn" class="live-chat-launcher" onclick="toggleLiveChatWindow()">💬 LIVE CHAT</button>
+    </div>
+
     <div id="toastModal">Notification</div>
 
     <script>
         function notifyParent(action, code='') { window.parent.postMessage({ sender: 'syncbeat', tab: 0, action, code }, '*'); }
-        const BACKEND_WS = 'wss://syncbeat-backend2.onrender.com'; const TMDB_API_KEY = '3fd2be6f0c70a2a598f084ddfb75487c'; let ws = null; let isHosting = false; let currentRoomCode = ""; let currentUserName = "User"; let currentAccountId = ""; let previousPeersList = []; let isStreamflixFullScreen = false; let searchTimeout = null; let activeSyncMode = 'online'; let currentOnlineImdbId = ""; let currentOnlineTitle = ""; let currentOnlinePoster = ""; let currentOnlineYear = ""; let activeOnlineServer = 1; let streamflixPlayer = null; let isSessionPlaying = false; let progressInterval = null; let isScrubbing = false;
+        const BACKEND_WS = 'wss://syncbeat-backend2.onrender.com'; const TMDB_API_KEY = '3fd2be6f0c70a2a598f084ddfb75487c'; let ws = null; let isHosting = false; let currentRoomCode = ""; let currentUserName = "User"; let currentAccountId = ""; let isStreamflixFullScreen = false; let searchTimeout = null; let activeSyncMode = 'online'; let currentOnlineImdbId = ""; let currentOnlineTitle = ""; let currentOnlinePoster = ""; let currentOnlineYear = ""; let activeOnlineServer = 1; let streamflixPlayer = null; let isSessionPlaying = false; let progressInterval = null; let isScrubbing = false;
         const emojiCategories = { 'smileys': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😋','😜','🤪','😎','🥳','😏','😒','😞','😔','😟','😕','🙁','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','💀','👻','🤖'], 'gestures': ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','💪'], 'animals': ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🐤','🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🐢','🐍','🐙','🦐','🦞','🦀','🐟','🐬','🐳','🦈'], 'food': ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🌽','🥕','🍞','🥐','🥯','🥞','🧇','🧀','🥓','🍔','🍟','🍕','🌭','🥪','🌮','🌯','🥗','🍿','🍱','🍚','🍛','🍣','🍜','🍝','🍦','🍩','🍪','🍰','🥧','🍫','🍬','🍭','☕','🍵','🍺','🍷'], 'hearts': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','❣️','💕','💞','💓','💗','💖','💘','💝','💯','💫','💥','💢','💦','💨','💬','💭','💤','⭐','🌟','✨','⚡','🔥'] }; let activeEmojiCategory = 'smileys';
+        
         window.addEventListener('DOMContentLoaded', () => { initPermanentDeviceAccount(); checkBackgroundRoomState(); renderEmojiGrid(); document.getElementById('interactionOverlay').classList.add('hidden'); });
         
-        function forceClearRoomState() { localStorage.removeItem('syncbeat_active_room'); checkBackgroundRoomState(); if(ws) { ws.close(); ws = null; } showToast("Room state successfully reset!"); goBackToHome(); notifyParent('ROOM_CLOSED'); }
+        function forceClearRoomState() { localStorage.removeItem('syncbeat_active_room'); checkBackgroundRoomState(); if(ws) { ws.close(); ws = null; } showLiveChatFloatingUI(false); showToast("Room state successfully reset!"); goBackToHome(); notifyParent('ROOM_CLOSED'); }
         
         function switchHostMode(mode) { activeSyncMode = mode; const tabOnline = document.getElementById('tabOnline'); const tabLocal = document.getElementById('tabLocal'); const onlineUI = document.getElementById('onlineModeUI'); const localUI = document.getElementById('localModeUI'); const headerTitle = document.getElementById('modeHeaderTitle'); const hostSyncBtn = document.getElementById('hostSyncControls'); const localSyncControls = document.getElementById('localSyncControls'); if (mode === 'online') { tabOnline.classList.add('active'); tabLocal.classList.remove('active'); onlineUI.classList.remove('hidden'); localUI.classList.add('hidden'); headerTitle.textContent = "🔍 TMDb Global Movie Search"; hostSyncBtn.classList.remove('hidden'); localSyncControls.classList.add('hidden'); stopLocalPlayer(); } else { tabLocal.classList.add('active'); tabOnline.classList.remove('active'); localUI.classList.remove('hidden'); onlineUI.classList.add('hidden'); headerTitle.textContent = "📁 Select Local Device File"; hostSyncBtn.classList.add('hidden'); localSyncControls.classList.remove('hidden'); const iframe = document.getElementById('movieIframe'); if (iframe) iframe.src = ""; } if (!isHosting) { document.getElementById('hostModeTabs').classList.add('hidden'); } }
         
@@ -255,13 +282,14 @@
                 showToast("No room found with this code"); 
                 currentRoomCode = ""; 
                 if (ws) { ws.close(); ws = null; } 
+                showLiveChatFloatingUI(false);
                 notifyParent('ROOM_CLOSED'); 
             } else if (data.type === 'ROOM_CLOSED') { 
                 exitHostSession(true); clearChatBox(); showLiveChatFloatingUI(false); showToast("Host closed room."); notifyParent('ROOM_CLOSED'); 
             } 
         }
         
-        function updateLocalPeerDisplay(role) { const initialNameEl = document.getElementById('initialPeerName'); const initialIdEl = document.getElementById('initialPeerId'); const roleTag = document.getElementById('peerRoleTag'); if (initialNameEl) initialNameEl.textContent = currentUserName || "User"; if (initialIdEl) initialIdEl.textContent = `ID: ${currentAccountId}`; if (roleTag) { roleTag.textContent = role; roleTag.style.background = role === 'HOST' ? '#dcfce7' : '#fef2f2'; roleTag.style.color = role === 'HOST' ? '#16a34a' : '#ef4444'; } }
+        function updateLocalPeerDisplay(role) { const initialNameEl = document.getElementById('initialPeerName'); const roleTag = document.getElementById('peerRoleTag'); if (initialNameEl) initialNameEl.textContent = currentUserName || "User"; if (roleTag) { roleTag.textContent = role; roleTag.style.background = role === 'HOST' ? '#dcfce7' : '#fef2f2'; roleTag.style.color = role === 'HOST' ? '#16a34a' : '#ef4444'; } }
         
         function applyRoleUI() { const isHost = isHosting; document.getElementById('movieSearchInput').classList.toggle('hidden', !isHost); document.getElementById('hostModeTabs').classList.toggle('hidden', !isHost); document.getElementById('sessionPlayBtn').disabled = !isHost; if (!isHost) { document.getElementById('hostSyncControls').classList.add('hidden'); document.getElementById('serverSelector').classList.add('hidden'); } }
         
@@ -278,7 +306,6 @@
                 }); 
             } 
             
-            // Broadcast state to new joiners
             if (isHosting && newPeers.length > previousPeerCount) {
                 if (activeSyncMode === 'online' && currentOnlineImdbId) {
                     ws.send(JSON.stringify({
@@ -301,21 +328,63 @@
             previousPeerCount = newPeers.length;
         }
         
-        function connectWebSocket(onSuccess) { if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) { if (ws.readyState === WebSocket.OPEN && onSuccess) onSuccess(); return; } ws = new WebSocket(BACKEND_WS); ws.onopen = () => { if (onSuccess) onSuccess(); else if (currentRoomCode) { if (isHosting) ws.send(JSON.stringify({ type: 'HOST_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); else ws.send(JSON.stringify({ type: 'JOIN_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); } }; ws.onmessage = (event) => { const data = JSON.parse(event.data); if (data.type === 'ROOM_HOSTED_SUCCESS') { showToast("Room ready!"); notifyParent('ROOM_OPENED', currentRoomCode); } else if (data.type === 'ROOM_JOIN_SUCCESS') { isHosting = false; currentRoomCode = data.code; localStorage.setItem('syncbeat_active_room', currentRoomCode); checkBackgroundRoomState(); document.getElementById('displayRoomCode').textContent = data.code; document.getElementById('sessionSubtitle').textContent = `Member: ${currentUserName}`; document.getElementById('sessionHeaderTitle').textContent = "Member Session"; updateLocalPeerDisplay('MEMBER'); applyRoleUI(); document.getElementById('mainLandingView').classList.add('hidden'); document.getElementById('hostSessionView').classList.remove('hidden'); showLiveChatFloatingUI(true); switchHostMode('online'); notifyParent('ROOM_OPENED', currentRoomCode); } else if (data.type === 'PEER_LIST') { handlePeerListUpdate(data.peers || []); } else if (data.type === 'NOTIFICATION') { showToast(data.message); } else handleIncomingControl(data); }; ws.onclose = () => { if (currentRoomCode && localStorage.getItem('syncbeat_active_room')) { setTimeout(() => connectWebSocket(), 3000); } }; }
+        function connectWebSocket(onSuccess) { if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) { if (ws.readyState === WebSocket.OPEN && onSuccess) onSuccess(); return; } ws = new WebSocket(BACKEND_WS); ws.onopen = () => { if (onSuccess) onSuccess(); else if (currentRoomCode) { if (isHosting) ws.send(JSON.stringify({ type: 'HOST_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); else ws.send(JSON.stringify({ type: 'JOIN_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); } }; ws.onmessage = (event) => { const data = JSON.parse(event.data); if (data.type === 'ROOM_HOSTED_SUCCESS') { showToast("Room ready!"); showLiveChatFloatingUI(true); notifyParent('ROOM_OPENED', currentRoomCode); } else if (data.type === 'ROOM_JOIN_SUCCESS') { isHosting = false; currentRoomCode = data.code; localStorage.setItem('syncbeat_active_room', currentRoomCode); checkBackgroundRoomState(); document.getElementById('displayRoomCode').textContent = data.code; document.getElementById('sessionSubtitle').textContent = `Member: ${currentUserName}`; document.getElementById('sessionHeaderTitle').textContent = "Member Session"; updateLocalPeerDisplay('MEMBER'); applyRoleUI(); document.getElementById('mainLandingView').classList.add('hidden'); document.getElementById('hostSessionView').classList.remove('hidden'); showLiveChatFloatingUI(true); switchHostMode('online'); notifyParent('ROOM_OPENED', currentRoomCode); } else if (data.type === 'PEER_LIST') { handlePeerListUpdate(data.peers || []); } else if (data.type === 'NOTIFICATION') { showToast(data.message); } else handleIncomingControl(data); }; ws.onclose = () => { if (currentRoomCode && localStorage.getItem('syncbeat_active_room')) { setTimeout(() => connectWebSocket(), 3000); } }; }
         
-        function startHostingSession() { if (localStorage.getItem('syncbeat_active_room')) { showToast("Active room already running."); return; } currentUserName = getUserInputName(); currentRoomCode = 'SYNC-' + Math.random().toString(36).substring(2, 6).toUpperCase(); showToast("Creating room..."); connectWebSocket(() => { isHosting = true; ws.send(JSON.stringify({ type: 'HOST_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); ws.send(JSON.stringify({ type: 'CREATE_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); localStorage.setItem('syncbeat_active_room', currentRoomCode); checkBackgroundRoomState(); document.getElementById('displayRoomCode').textContent = currentRoomCode; document.getElementById('sessionSubtitle').textContent = `Host: ${currentUserName}`; document.getElementById('sessionHeaderTitle').textContent = "Host Session"; updateLocalPeerDisplay('HOST'); applyRoleUI(); switchHostMode('online'); document.getElementById('mainLandingView').classList.add('hidden'); document.getElementById('hostSessionView').classList.remove('hidden'); notifyParent('ROOM_OPENED', currentRoomCode); }); }
+        function startHostingSession() { 
+            if (localStorage.getItem('syncbeat_active_room')) { showToast("Active room already running."); return; } 
+            currentUserName = getUserInputName(); 
+            currentRoomCode = 'SYNC-' + Math.random().toString(36).substring(2, 6).toUpperCase(); 
+            showToast("Creating room..."); 
+            connectWebSocket(() => { 
+                isHosting = true; 
+                ws.send(JSON.stringify({ type: 'HOST_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); 
+                ws.send(JSON.stringify({ type: 'CREATE_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); 
+                localStorage.setItem('syncbeat_active_room', currentRoomCode); 
+                checkBackgroundRoomState(); 
+                document.getElementById('displayRoomCode').textContent = currentRoomCode; 
+                document.getElementById('sessionSubtitle').textContent = `Host: ${currentUserName}`; 
+                document.getElementById('sessionHeaderTitle').textContent = "Host Session"; 
+                updateLocalPeerDisplay('HOST'); 
+                applyRoleUI(); 
+                switchHostMode('online'); 
+                document.getElementById('mainLandingView').classList.add('hidden'); 
+                document.getElementById('hostSessionView').classList.remove('hidden'); 
+                showLiveChatFloatingUI(true); 
+                notifyParent('ROOM_OPENED', currentRoomCode); 
+            }); 
+        }
         
-        function returnToHostingSession() { document.getElementById('mainLandingView').classList.add('hidden'); document.getElementById('hostSessionView').classList.remove('hidden'); }
+        function returnToHostingSession() { 
+            document.getElementById('mainLandingView').classList.add('hidden'); 
+            document.getElementById('hostSessionView').classList.remove('hidden'); 
+            showLiveChatFloatingUI(true); 
+        }
         
         function connectToRoom() { if (localStorage.getItem('syncbeat_active_room')) { showToast("Active room already running."); return; } currentUserName = getUserInputName(); const code = document.getElementById('roomCodeInput').value.trim().toUpperCase(); if (code.length < 4) { showToast("Enter valid code."); return; } currentRoomCode = code; showToast("Connecting..."); connectWebSocket(() => ws.send(JSON.stringify({ type: 'JOIN_ROOM', code: code, name: currentUserName, accountId: currentAccountId }))); }
         
         function copyCode() { navigator.clipboard.writeText(currentRoomCode); showToast("Copied!"); } function shareCode() { if (navigator.share) navigator.share({ title: 'Streamflix Room', text: currentRoomCode }); }
         
-        function closeRoomAndReturnHome() { if (isHosting && ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type: 'ROOM_CLOSED' })); } exitHostSession(true); clearChatBox(); showToast("Left room."); notifyParent('ROOM_CLOSED'); }
+        function closeRoomAndReturnHome() { if (isHosting && ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type: 'ROOM_CLOSED' })); } exitHostSession(true); clearChatBox(); showLiveChatFloatingUI(false); showToast("Left room."); notifyParent('ROOM_CLOSED'); }
         
         function goBackToHome() { document.getElementById('hostSessionView').classList.add('hidden'); document.getElementById('mainLandingView').classList.remove('hidden'); checkBackgroundRoomState(); }
         
-        function exitHostSession(isPermanentClose = false) { stopLocalPlayer(); document.getElementById('sessionTitle').textContent = "No Movie Selected"; document.getElementById('sessionArtist').textContent = "Waiting for Host..."; document.getElementById('sessionPoster').src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='85'><rect width='60' height='85' fill='%23333'/></svg>"; document.getElementById('movieIframe').src = ""; currentRoomCode = ""; isHosting = false; if (isPermanentClose) localStorage.removeItem('syncbeat_active_room'); if (ws) { ws.close(); ws = null; } document.getElementById('hostSessionView').classList.add('hidden'); document.getElementById('mainLandingView').classList.remove('hidden'); checkBackgroundRoomState(); document.getElementById('interactionOverlay').classList.add('hidden'); notifyParent('ROOM_CLOSED'); }
+        function exitHostSession(isPermanentClose = false) { 
+            stopLocalPlayer(); 
+            document.getElementById('sessionTitle').textContent = "No Movie Selected"; 
+            document.getElementById('sessionArtist').textContent = "Waiting for Host..."; 
+            document.getElementById('sessionPoster').src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='85'><rect width='60' height='85' fill='%23333'/></svg>"; 
+            document.getElementById('movieIframe').src = ""; 
+            currentRoomCode = ""; 
+            isHosting = false; 
+            if (isPermanentClose) localStorage.removeItem('syncbeat_active_room'); 
+            if (ws) { ws.close(); ws = null; } 
+            showLiveChatFloatingUI(false); 
+            document.getElementById('hostSessionView').classList.add('hidden'); 
+            document.getElementById('mainLandingView').classList.remove('hidden'); 
+            checkBackgroundRoomState(); 
+            document.getElementById('interactionOverlay').classList.add('hidden'); 
+            notifyParent('ROOM_CLOSED'); 
+        }
         
         function sendChatMessage() { const input = document.getElementById('chatInput'); const msg = input.value.trim(); if (!msg) return; if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type: 'CHAT_MESSAGE', message: msg, name: currentUserName })); appendChatMessage(currentUserName, msg); showRoomPopup(currentUserName, msg); } input.value = ''; }
         
@@ -335,7 +404,16 @@
         
         function toggleLiveChatWindow() { const windowEl = document.getElementById('liveChatWindow'); const launcherBtn = document.getElementById('liveChatLauncherBtn'); const isHidden = windowEl.classList.contains('hidden'); windowEl.classList.toggle('hidden', !isHidden); launcherBtn.classList.toggle('hidden', isHidden); }
         
-        function showLiveChatFloatingUI(show) { const container = document.getElementById('liveChatFloatingContainer'); if (container) { container.classList.toggle('hidden', !show); if (!show) { document.getElementById('liveChatWindow').classList.add('hidden'); document.getElementById('liveChatLauncherBtn').classList.remove('hidden'); } } }
+        function showLiveChatFloatingUI(show) { 
+            const container = document.getElementById('liveChatFloatingContainer'); 
+            if (container) { 
+                container.classList.toggle('hidden', !show); 
+                if (!show) { 
+                    document.getElementById('liveChatWindow').classList.add('hidden'); 
+                    document.getElementById('liveChatLauncherBtn').classList.remove('hidden'); 
+                } 
+            } 
+        }
         
         function initPermanentDeviceAccount() { let permanentId = localStorage.getItem('syncbeat_permanent_device_id'); if (!permanentId) { permanentId = 'SYNC-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase(); localStorage.setItem('syncbeat_permanent_device_id', permanentId); } currentAccountId = permanentId + '_' + Math.random().toString(36).substring(2, 6); currentUserName = localStorage.getItem('syncbeat_device_name') || ''; document.getElementById('userNameInput').value = currentUserName; document.getElementById('loggedAccountBadge').textContent = `ID: ${currentAccountId}`; document.getElementById('deviceAccountDisplay').textContent = `Permanent Device ID: ${currentAccountId}`; }
         

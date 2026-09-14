@@ -134,9 +134,10 @@
     <div id="toast"><i class="fa-solid fa-lock" style="color: #ef4444;"></i> <span id="toastMsg"></span></div>
 
     <div id="slider">
-        <div class="frame-wrapper"><iframe src="./movies.html" allow="autoplay; fullscreen"></iframe></div>
-        <div class="frame-wrapper"><iframe src="./golden.html" allow="autoplay; fullscreen"></iframe></div>
-        <div class="frame-wrapper"><iframe src="./audio.html" allow="autoplay; fullscreen"></iframe></div>
+        <!-- CRITICAL FIX: microphone, picture-in-picture, fullscreen, and autoplay explicitly granted -->
+        <div class="frame-wrapper"><iframe src="./movies.html" allow="autoplay; fullscreen; picture-in-picture; microphone"></iframe></div>
+        <div class="frame-wrapper"><iframe src="./golden.html" allow="autoplay; fullscreen; picture-in-picture; microphone"></iframe></div>
+        <div class="frame-wrapper"><iframe src="./audio.html" allow="autoplay; fullscreen; picture-in-picture; microphone"></iframe></div>
     </div>
 
     <nav class="tab-bar" id="tabBar">
@@ -180,6 +181,8 @@
                 splashVid.addEventListener('ended', dismissSplashScreen);
                 splashVid.addEventListener('error', dismissSplashScreen);
                 setTimeout(dismissSplashScreen, 8000); 
+            } else {
+                dismissSplashScreen();
             }
         }
 
@@ -246,6 +249,7 @@
                 return;
             }
 
+            currentTab = index;
             slider.style.transform = `translateX(-${index * 100}vw)`;
             const pos = ['6px', 'calc(33.333% + 1px)', 'calc(66.666% - 4px)'];
             indicator.style.left = pos[index];
@@ -259,3 +263,4 @@
     </script>
 </body>
 </html>
+

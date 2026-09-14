@@ -101,6 +101,8 @@
         .ptt-btn { background: #1e293b; color: white; border: none; border-radius: 8px; padding: 0 12px; font-size: 16px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; user-select: none; }
         .ptt-btn:active, .ptt-btn.recording { background: #ef4444; animation: pulseRed 1s infinite; }
         @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        
+        .audio-msg { background: #f1f5f9; padding: 6px; border-radius: 12px; display: inline-block; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -132,6 +134,7 @@
                 <div id="localSyncControls" class="hidden" style="margin-top: 10px; border-top: 1px solid #334155; padding-top: 10px;"><div class="progress-track" id="progressTrackScrubber" onmousedown="startScrubbing(event)" ontouchstart="startScrubbing(event)" onclick="seekTrack(event)"><div class="progress-fill" id="sessionFill"><div class="progress-thumb"></div></div></div><div class="time-info"><span id="sessionCurrentTime">0:00</span><span id="sessionTotalDuration">0:00</span></div><div style="display:flex; justify-content:center;"><button class="play-pause-lg" id="sessionPlayBtn" onclick="togglePlaySession()">▶</button></div></div>
             </div>
 
+            <!-- Queue Panel -->
             <div class="card" id="queueCard" style="display: none;">
                 <div class="card-header-sm"><span>🎬 Up Next Queue</span></div>
                 <div id="queueListContainer" style="font-size: 12px;">
@@ -172,6 +175,7 @@
         </div>
     </div>
 
+    <!-- Live Chat & PTT Section -->
     <div id="liveChatFloatingContainer" class="hidden">
         <div id="liveChatWindow" class="floating-chat-window hidden">
             <div class="floating-chat-header">
@@ -233,24 +237,95 @@
             if (!isHosting) { document.getElementById('hostModeTabs').classList.add('hidden'); } 
         }
         
+        // --- CHAT AND NOTIFICATIONS ---
         let unreadChatCount = 0;
-        function playDingSound() { try { const audioCtx = new (window.AudioContext || window.webkitAudioContext)(); const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5); osc.connect(gainNode); gainNode.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.5); } catch (e) {} }
-        function updateUnreadBadge(sender) { if (sender === currentUserName) return; playDingSound(); const windowEl = document.getElementById('liveChatWindow'); if (windowEl.classList.contains('hidden')) { unreadChatCount++; const badge = document.getElementById('chatUnreadBadge'); badge.textContent = unreadChatCount; badge.classList.remove('hidden'); } }
-        function toggleLiveChatWindow() { const windowEl = document.getElementById('liveChatWindow'); const launcherBtn = document.getElementById('liveChatLauncherBtn'); const isHidden = windowEl.classList.contains('hidden'); windowEl.classList.toggle('hidden', !isHidden); launcherBtn.classList.toggle('hidden', isHidden); if (isHidden) { unreadChatCount = 0; document.getElementById('chatUnreadBadge').classList.add('hidden'); } }
-        function sendChatMessage() { const input = document.getElementById('chatInput'); const msg = input.value.trim(); if (!msg) return; if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type: 'CHAT_MESSAGE', message: msg, name: currentUserName })); appendChatMessage(currentUserName, msg); showRoomPopup(currentUserName, msg); } input.value = ''; }
-        function appendChatMessage(sender, message) { const container = document.getElementById('chatMessagesContainer'); if (container.querySelector('div[style*="text-align: center"]')) container.innerHTML = ''; const div = document.createElement('div'); div.style.wordBreak = 'break-all'; div.innerHTML = `<b style="color: #ef4444;">${escapeHtml(sender)}:</b> ${escapeHtml(message)}`; container.appendChild(div); container.scrollTop = container.scrollHeight; updateUnreadBadge(sender); }
+
+        function playDingSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            } catch (e) {}
+        }
+
+        function updateUnreadBadge(sender) {
+            if (sender === currentUserName) return;
+            playDingSound();
+            const windowEl = document.getElementById('liveChatWindow');
+            if (windowEl.classList.contains('hidden')) {
+                unreadChatCount++;
+                const badge = document.getElementById('chatUnreadBadge');
+                badge.textContent = unreadChatCount;
+                badge.classList.remove('hidden');
+            }
+        }
+
+        function toggleLiveChatWindow() { 
+            const windowEl = document.getElementById('liveChatWindow'); 
+            const launcherBtn = document.getElementById('liveChatLauncherBtn'); 
+            const isHidden = windowEl.classList.contains('hidden'); 
+            windowEl.classList.toggle('hidden', !isHidden); 
+            launcherBtn.classList.toggle('hidden', isHidden); 
+            
+            if (isHidden) {
+                unreadChatCount = 0;
+                document.getElementById('chatUnreadBadge').classList.add('hidden');
+            }
+        }
+
+        function sendChatMessage() { 
+            const input = document.getElementById('chatInput'); 
+            const msg = input.value.trim(); 
+            if (!msg) return; 
+            if (ws && ws.readyState === WebSocket.OPEN) { 
+                ws.send(JSON.stringify({ type: 'CHAT_MESSAGE', message: msg, name: currentUserName })); 
+                appendChatMessage(currentUserName, msg); 
+                showRoomPopup(currentUserName, msg); 
+            } 
+            input.value = ''; 
+        }
+
+        function appendChatMessage(sender, message) { 
+            const container = document.getElementById('chatMessagesContainer'); 
+            if (container.querySelector('div[style*="text-align: center"]')) container.innerHTML = ''; 
+            const div = document.createElement('div'); 
+            div.style.wordBreak = 'break-all'; 
+            div.innerHTML = `<b style="color: #ef4444;">${escapeHtml(sender)}:</b> ${escapeHtml(message)}`; 
+            container.appendChild(div); 
+            container.scrollTop = container.scrollHeight; 
+            updateUnreadBadge(sender);
+        }
 
         // --- PTT AND VISUALIZER LOGIC ---
-        let mediaRecorder = null; let audioChunks = []; let isRecording = false; let pttStream = null;
-        let audioContext = null; let analyser = null; let visualizerAnim = null; let isHoldingPTT = false;
+        let mediaRecorder = null; 
+        let audioChunks = []; 
+        let isRecording = false; 
+        let pttStream = null;
+        let audioContext = null; 
+        let analyser = null; 
+        let visualizerAnim = null; 
+        let isHoldingPTT = false;
         
         async function startPTT(e) {
             if (e && e.preventDefault) e.preventDefault();
             if (isHoldingPTT) return; 
             isHoldingPTT = true;
+            
             try {
-                pttStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-                if (!isHoldingPTT) { pttStream.getTracks().forEach(t => t.stop()); pttStream = null; return; }
+                pttStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+                });
+                
+                if (!isHoldingPTT) { 
+                    pttStream.getTracks().forEach(t => t.stop()); 
+                    pttStream = null; 
+                    return; 
+                }
                 
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
@@ -270,7 +345,8 @@
                     analyser.getByteTimeDomainData(dataArray);
                     canvasCtx.fillStyle = '#1e293b'; 
                     canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-                    canvasCtx.lineWidth = 2; canvasCtx.strokeStyle = '#10b981'; 
+                    canvasCtx.lineWidth = 2; 
+                    canvasCtx.strokeStyle = '#10b981'; 
                     canvasCtx.beginPath();
                     const sliceWidth = canvas.width * 1.0 / bufferLength; let x = 0;
                     for(let i = 0; i < bufferLength; i++) {
@@ -299,45 +375,79 @@
                     };
                     reader.readAsDataURL(blob);
                     audioChunks = [];
+                    
                     if (audioContext) { audioContext.close(); audioContext = null; }
                     cancelAnimationFrame(visualizerAnim);
                     canvas.classList.add('hidden');
-                    if (pttStream) { pttStream.getTracks().forEach(t => t.stop()); pttStream = null; }
+                    
+                    if (pttStream) { 
+                        pttStream.getTracks().forEach(t => t.stop()); 
+                        pttStream = null; 
+                    }
                 };
                 
-                if (isHoldingPTT) mediaRecorder.start(); else mediaRecorder.stop();
-            } catch (err) { isHoldingPTT = false; showToast("Microphone access denied."); }
+                if (isHoldingPTT) {
+                    mediaRecorder.start();
+                } else {
+                    mediaRecorder.stop();
+                }
+                
+            } catch (err) { 
+                isHoldingPTT = false; 
+                showToast("Microphone access denied."); 
+            }
         }
         
         function stopPTT(e) { 
             if (e && e.preventDefault) e.preventDefault();
             if (!isHoldingPTT) return;
             isHoldingPTT = false;
+            
             document.getElementById('pttButton').classList.remove('recording');
+            
             if (mediaRecorder && mediaRecorder.state !== 'inactive') { 
                 mediaRecorder.stop(); 
                 isRecording = false; 
             } else if (pttStream) { 
-                pttStream.getTracks().forEach(t => t.stop()); pttStream = null; 
+                pttStream.getTracks().forEach(t => t.stop()); 
+                pttStream = null; 
             }
         }
         
         function appendVoiceMessage(sender, audioData) {
             const container = document.getElementById('chatMessagesContainer');
             if (container.querySelector('div[style*="text-align: center"]')) container.innerHTML = '';
+            
             const div = document.createElement('div');
             const autoplayAttr = sender !== currentUserName ? 'autoplay' : '';
+            
             div.innerHTML = `<b style="color: #10b981;">🎤 ${escapeHtml(sender)}:</b><br><audio src="${audioData}" controls ${autoplayAttr} style="height: 30px; width: 100%; margin-top: 4px;"></audio>`;
+            
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
             updateUnreadBadge(sender);
         }
 
-        async function togglePiP() { if (activeSyncMode === 'local' && streamflixPlayer) { try { if (document.pictureInPictureElement) { await document.exitPictureInPicture(); } else { await streamflixPlayer.requestPictureInPicture(); } } catch (e) { showToast("PiP not supported on this device/browser."); } } }
+        // PiP Feature
+        async function togglePiP() {
+            if (activeSyncMode === 'local' && streamflixPlayer) {
+                try {
+                    if (document.pictureInPictureElement) {
+                        await document.exitPictureInPicture();
+                    } else {
+                        await streamflixPlayer.requestPictureInPicture();
+                    }
+                } catch (e) {
+                    showToast("PiP not supported on this device/browser.");
+                }
+            }
+        }
+        
         function unlockMediaContext() { document.getElementById('interactionOverlay').classList.add('hidden'); if (activeSyncMode === 'local' && streamflixPlayer) { streamflixPlayer.muted = false; streamflixPlayer.play().catch(e => console.warn(e)); } showToast("Connected to Room Media!"); }
         
         function searchImdbMovies(query) { 
             const resultsBox = document.getElementById('movieSearchResults'); 
+            
             if (query.toLowerCase().startsWith('twitch:')) {
                 const channel = query.split(':')[1].trim();
                 if(channel.length > 2) {
@@ -377,6 +487,8 @@
                             itemDiv.className = 'movie-result-item'; 
                             
                             const btnText = isHosting ? 'Embed' : '+ Queue';
+                            const btnAction = isHosting ? 'Play' : 'Suggest';
+
                             itemDiv.innerHTML = `<img src="${posterUrl}" class="movie-result-poster" alt="poster"><div class="movie-result-info"><div class="movie-result-title">${escapeHtml(title)}</div><div class="movie-result-year">Movie ${escapeHtml(year)}</div></div><button class="code-action-btn" style="padding:6px 10px; font-size:10px; background:#ef4444; color:white; border:none;">${btnText}</button>`; 
                             itemDiv.onclick = async () => { 
                                 resultsBox.style.display = 'none'; document.getElementById('movieSearchInput').value = ""; 
@@ -417,7 +529,15 @@
             updatePlayerUI(currentOnlineTitle, currentOnlineYear, currentOnlinePoster, embedUrl); 
             
             if (ws && ws.readyState === WebSocket.OPEN) { 
-                ws.send(JSON.stringify({ type: 'LOAD_VIDEO', mode: 'online', imdbId: currentOnlineImdbId, title: currentOnlineTitle, posterUrl: currentOnlinePoster, year: currentOnlineYear, embedUrl: embedUrl })); 
+                ws.send(JSON.stringify({ 
+                    type: 'LOAD_VIDEO', 
+                    mode: 'online',
+                    imdbId: currentOnlineImdbId, 
+                    title: currentOnlineTitle, 
+                    posterUrl: currentOnlinePoster, 
+                    year: currentOnlineYear, 
+                    embedUrl: embedUrl 
+                })); 
             } 
             showToast(serverNum === 5 ? "Live Stream Sync Active" : `Loaded Server ${serverNum}! Use Countdown to sync.`); 
         }
@@ -448,78 +568,222 @@
         }
         
         function stopLocalPlayer() { if (streamflixPlayer) { streamflixPlayer.pause(); streamflixPlayer.removeAttribute('src'); streamflixPlayer.load(); } clearInterval(progressInterval); notifyParent('MEDIA_PAUSED'); }
+        
         function startProgressTracker() { clearInterval(progressInterval); progressInterval = setInterval(() => { if (isScrubbing || !streamflixPlayer) return; const current = streamflixPlayer.currentTime || 0; const total = streamflixPlayer.duration || 0; if (!isNaN(total) && total > 0) { document.getElementById('sessionFill').style.width = ((current / total) * 100) + '%'; document.getElementById('sessionCurrentTime').textContent = formatTime(current); document.getElementById('sessionTotalDuration').textContent = formatTime(total); } }, 500); }
+        
         function formatTime(seconds) { const mins = Math.floor(seconds / 60); const secs = Math.floor(seconds % 60); return `${mins}:${secs < 10 ? '0' : ''}${secs}`; }
+        
         function startScrubbing(event) { if (!isHosting || activeSyncMode !== 'local') return; isScrubbing = true; updateSliderPosition(event); const onTouch = (e) => updateSliderPosition(e.touches ? e.touches[0] : e); const onMouse = (e) => updateSliderPosition(e); const onEnd = (e) => { isScrubbing = false; window.removeEventListener('mousemove', onMouse); window.removeEventListener('mouseup', onEnd); window.removeEventListener('touchmove', onTouch); window.removeEventListener('touchend', onEnd); finalizeSeek(e.clientX || (e.changedTouches ? e.changedTouches[0].clientX : 0)); }; window.addEventListener('mousemove', onMouse); window.addEventListener('mouseup', onEnd); window.addEventListener('touchmove', onTouch); window.addEventListener('touchend', onEnd); }
+        
         function updateSliderPosition(e) { if (!isHosting) return; const track = document.getElementById('progressTrackScrubber'); const rect = track.getBoundingClientRect(); const percentage = Math.max(0, Math.min(1, (e.clientX || (e.touches ? e.touches[0].clientX : 0) - rect.left) / rect.width)); document.getElementById('sessionFill').style.width = (percentage * 100) + '%'; }
+        
         function finalizeSeek(clientX) { if (!isHosting || !streamflixPlayer || isNaN(streamflixPlayer.duration)) return; const track = document.getElementById('progressTrackScrubber'); const rect = track.getBoundingClientRect(); const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)); const newTime = percentage * streamflixPlayer.duration; streamflixPlayer.currentTime = newTime; if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'CONTROL', action: 'seek', time: newTime })); }
+        
         function seekTrack(event) { if (!isHosting) return; finalizeSeek(event.clientX); }
+        
         function togglePlaySession() { if (!isHosting || activeSyncMode !== 'local') return; if (streamflixPlayer) { if (!isSessionPlaying) streamflixPlayer.play().catch(e => console.warn(e)); else streamflixPlayer.pause(); } }
         
         function toggleFullScreenMode() { isStreamflixFullScreen = !isStreamflixFullScreen; const sessionView = document.getElementById('hostSessionView'); const hostUrlControls = document.getElementById('hostUrlControls'); const wrapper = activeSyncMode === 'online' ? document.getElementById('iframeWrapper') : document.getElementById('localVideoWrapper'); const exitBtn = document.getElementById('exitFullScreenBtn'); for (let child of sessionView.children) { if (child !== hostUrlControls) child.classList.toggle('hidden', isStreamflixFullScreen); } document.getElementById('controllerCardHeader').classList.toggle('hidden', isStreamflixFullScreen); if(activeSyncMode === 'online') { document.getElementById('movieSearchInput').classList.toggle('hidden', isStreamflixFullScreen); document.getElementById('serverSelector').classList.toggle('hidden', isStreamflixFullScreen || !isHosting); } if(activeSyncMode === 'local') document.getElementById('localFileBanner').classList.toggle('hidden', isStreamflixFullScreen); document.getElementById('hostModeTabs').classList.toggle('hidden', isStreamflixFullScreen || !isHosting); if (isStreamflixFullScreen) { hostUrlControls.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:999999; background:#000; margin:0; padding:0; border:none; box-shadow:none;"; wrapper.style.cssText = "width:100vw; height:100vh; border-radius:0; margin:0;"; exitBtn.classList.remove('hidden'); notifyParent(activeSyncMode === 'online' ? 'MEDIA_PLAYING' : (isSessionPlaying ? 'MEDIA_PLAYING' : 'MEDIA_PAUSED')); } else { hostUrlControls.style.cssText = "position:relative; background:#ffffff; margin:0 0 14px 0; padding:16px; border:1px solid #fecaca; border-radius:20px;"; wrapper.style.cssText = "position:relative; width:100%; height:240px; border-radius:12px; margin-top:8px; border:1px solid #475569;"; exitBtn.classList.add('hidden'); notifyParent(activeSyncMode === 'online' ? 'MEDIA_PLAYING' : (isSessionPlaying ? 'MEDIA_PLAYING' : 'MEDIA_PAUSED')); } }
         
+        // Queue Logic
         let mediaQueue = [];
-        function handleQueueRequest(data) { if (!isHosting) return; document.getElementById('queueCard').style.display = 'block'; mediaQueue.push(data); renderQueue(); showToast(`${data.suggester} added ${data.title} to Queue!`); }
-        function renderQueue() { const container = document.getElementById('queueListContainer'); container.innerHTML = ''; if (mediaQueue.length === 0) { container.innerHTML = '<div style="text-align: center; color: #9ca3af; font-style: italic;">Queue is empty</div>'; document.getElementById('queueCard').style.display = 'none'; return; } mediaQueue.forEach((item, index) => { const div = document.createElement('div'); div.className = 'queue-item'; div.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><img src="${item.posterUrl}" style="width:24px; height:36px; border-radius:4px;"><div style="font-weight:700; color:#1e1b4b;">${escapeHtml(item.title)} <span style="font-size:9px; color:#6b7280; font-weight:normal;">via ${escapeHtml(item.suggester)}</span></div></div><button class="code-action-btn" style="padding:4px 8px; font-size:10px; background:#10b981; color:white; border:none;">Play</button>`; div.onclick = () => { loadImdbMovie(item.imdbId, item.title, item.posterUrl, item.year); mediaQueue.splice(index, 1); renderQueue(); }; container.appendChild(div); }); }
+        function handleQueueRequest(data) {
+            if (!isHosting) return;
+            document.getElementById('queueCard').style.display = 'block';
+            mediaQueue.push(data);
+            renderQueue();
+            showToast(`${data.suggester} added ${data.title} to Queue!`);
+        }
+
+        function renderQueue() {
+            const container = document.getElementById('queueListContainer');
+            container.innerHTML = '';
+            if (mediaQueue.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #9ca3af; font-style: italic;">Queue is empty</div>';
+                document.getElementById('queueCard').style.display = 'none';
+                return;
+            }
+            mediaQueue.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'queue-item';
+                div.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><img src="${item.posterUrl}" style="width:24px; height:36px; border-radius:4px;"><div style="font-weight:700; color:#1e1b4b;">${escapeHtml(item.title)} <span style="font-size:9px; color:#6b7280; font-weight:normal;">via ${escapeHtml(item.suggester)}</span></div></div><button class="code-action-btn" style="padding:4px 8px; font-size:10px; background:#10b981; color:white; border:none;">Play</button>`;
+                div.onclick = () => {
+                    loadImdbMovie(item.imdbId, item.title, item.posterUrl, item.year);
+                    mediaQueue.splice(index, 1);
+                    renderQueue();
+                };
+                container.appendChild(div);
+            });
+        }
 
         function handleIncomingControl(data) { 
             if (data.type === 'LOAD_VIDEO') { 
                 if (data.mode === 'online') {
-                    switchHostMode('online'); updatePlayerUI(data.title, data.year, data.posterUrl, data.embedUrl); showToast("Host changed media!"); 
+                    switchHostMode('online'); 
+                    updatePlayerUI(data.title, data.year, data.posterUrl, data.embedUrl); 
+                    showToast("Host changed media!"); 
                 } else if (data.mode === 'local') {
-                    switchHostMode('local'); showRoomPopup("Host", `Started watching: ${data.fileName}`); showToast(`Host loaded: ${data.fileName}. Pick your local copy!`); 
-                    document.getElementById('sessionTitle').textContent = data.fileName; document.getElementById('sessionArtist').textContent = "Pick your local file to sync"; document.getElementById('interactionOverlay').classList.remove('hidden'); initStreamflixPlayerListeners();
+                    switchHostMode('local'); 
+                    showRoomPopup("Host", `Started watching: ${data.fileName}`); 
+                    showToast(`Host loaded: ${data.fileName}. Pick your local copy!`); 
+                    document.getElementById('sessionTitle').textContent = data.fileName; 
+                    document.getElementById('sessionArtist').textContent = "Pick your local file to sync"; 
+                    document.getElementById('interactionOverlay').classList.remove('hidden'); 
+                    initStreamflixPlayerListeners();
                 }
             } else if (data.type === 'CONTROL') { 
                 if (streamflixPlayer) { 
                     const targetTime = (typeof data.time === 'number' ? data.time : streamflixPlayer.currentTime) + 0.15; 
-                    if (data.action === 'play' || data.action === 'seek') { if (typeof data.time === 'number') streamflixPlayer.currentTime = targetTime + 0.2; streamflixPlayer.play().catch(e => console.warn(e)); } 
-                    if (data.action === 'pause') { if (typeof data.time === 'number') streamflixPlayer.currentTime = data.time; streamflixPlayer.pause(); } 
+                    if (data.action === 'play' || data.action === 'seek') { 
+                        if (typeof data.time === 'number') streamflixPlayer.currentTime = targetTime + 0.2; 
+                        streamflixPlayer.play().catch(e => console.warn(e)); 
+                    } 
+                    if (data.action === 'pause') { 
+                        if (typeof data.time === 'number') streamflixPlayer.currentTime = data.time; 
+                        streamflixPlayer.pause(); 
+                    } 
                 } 
-            } else if (data.type === 'PLAY_COUNTDOWN') { showCountdownOverlay(); 
-            } else if (data.type === 'CHAT_MESSAGE') { appendChatMessage(data.name || 'User', data.message); showRoomPopup(data.name || 'User', data.message); 
-            } else if (data.type === 'VOICE_MESSAGE') { appendVoiceMessage(data.name || 'User', data.audio);
-            } else if (data.type === 'SUGGEST_QUEUE') { handleQueueRequest(data);
-            } else if (data.type === 'REACTION') { showFloatingReaction(data.emoji); 
-            } else if (data.type === 'ROOM_NOT_FOUND') { showToast("No room found with this code"); currentRoomCode = ""; if (ws) { ws.close(); ws = null; } showLiveChatFloatingUI(false); notifyParent('ROOM_CLOSED'); 
-            } else if (data.type === 'ROOM_CLOSED') { exitHostSession(true); clearChatBox(); showLiveChatFloatingUI(false); showToast("Host closed room."); notifyParent('ROOM_CLOSED'); } 
+            } else if (data.type === 'PLAY_COUNTDOWN') { 
+                showCountdownOverlay(); 
+            } else if (data.type === 'CHAT_MESSAGE') { 
+                appendChatMessage(data.name || 'User', data.message); 
+                showRoomPopup(data.name || 'User', data.message); 
+            } else if (data.type === 'VOICE_MESSAGE') {
+                appendVoiceMessage(data.name || 'User', data.audio);
+            } else if (data.type === 'SUGGEST_QUEUE') {
+                handleQueueRequest(data);
+            } else if (data.type === 'REACTION') { 
+                showFloatingReaction(data.emoji); 
+            } else if (data.type === 'ROOM_NOT_FOUND') { 
+                showToast("No room found with this code"); 
+                currentRoomCode = ""; 
+                if (ws) { ws.close(); ws = null; } 
+                showLiveChatFloatingUI(false);
+                notifyParent('ROOM_CLOSED'); 
+            } else if (data.type === 'ROOM_CLOSED') { 
+                exitHostSession(true); clearChatBox(); showLiveChatFloatingUI(false); showToast("Host closed room."); notifyParent('ROOM_CLOSED'); 
+            } 
         }
         
         function updateLocalPeerDisplay(role) { const initialNameEl = document.getElementById('initialPeerName'); const roleTag = document.getElementById('peerRoleTag'); if (initialNameEl) initialNameEl.textContent = currentUserName || "User"; if (roleTag) { roleTag.textContent = role; roleTag.style.background = role === 'HOST' ? '#dcfce7' : '#fef2f2'; roleTag.style.color = role === 'HOST' ? '#16a34a' : '#ef4444'; } }
-        function applyRoleUI() { const isHost = isHosting; document.getElementById('movieSearchInput').placeholder = isHost ? "Search movies OR 'twitch:channelname'..." : "Search movies to add to Host's Queue..."; document.getElementById('hostModeTabs').classList.toggle('hidden', !isHost); document.getElementById('sessionPlayBtn').disabled = !isHost; if (!isHost) { document.getElementById('hostSyncControls').classList.add('hidden'); document.getElementById('serverSelector').classList.add('hidden'); } }
+        
+        function applyRoleUI() { 
+            const isHost = isHosting; 
+            document.getElementById('movieSearchInput').placeholder = isHost ? "Search movies OR 'twitch:channelname'..." : "Search movies to add to Host's Queue...";
+            document.getElementById('hostModeTabs').classList.toggle('hidden', !isHost); 
+            document.getElementById('sessionPlayBtn').disabled = !isHost; 
+            
+            if (!isHost) { 
+                document.getElementById('hostSyncControls').classList.add('hidden'); 
+                document.getElementById('serverSelector').classList.add('hidden'); 
+            } 
+        }
         
         let previousPeerCount = 0;
         function handlePeerListUpdate(newPeers) { 
             const container = document.getElementById('peerListContainer'); 
-            if (container) { container.innerHTML = ''; newPeers.forEach(peer => { const div = document.createElement('div'); div.className = 'peer-item'; div.innerHTML = `<div class="peer-info"><div class="peer-icon" style="background:#fee2e2; color:#ef4444;">👤</div><div><div class="peer-name">${escapeHtml(peer.name || 'User')}</div></div></div><span class="sync-tag" style="${peer.role === 'HOST' ? 'background:#dcfce7; color:#16a34a;' : 'background:#fef2f2; color:#ef4444;'}">${escapeHtml(peer.role || 'MEMBER')}</span>`; container.appendChild(div); }); } 
+            if (container) { 
+                container.innerHTML = ''; 
+                newPeers.forEach(peer => { 
+                    const div = document.createElement('div'); 
+                    div.className = 'peer-item'; 
+                    div.innerHTML = `<div class="peer-info"><div class="peer-icon" style="background:#fee2e2; color:#ef4444;">👤</div><div><div class="peer-name">${escapeHtml(peer.name || 'User')}</div></div></div><span class="sync-tag" style="${peer.role === 'HOST' ? 'background:#dcfce7; color:#16a34a;' : 'background:#fef2f2; color:#ef4444;'}">${escapeHtml(peer.role || 'MEMBER')}</span>`; 
+                    container.appendChild(div); 
+                }); 
+            } 
+            
             if (isHosting && newPeers.length > previousPeerCount) {
-                if (activeSyncMode === 'online' && currentOnlineImdbId) { ws.send(JSON.stringify({ type: 'LOAD_VIDEO', mode: 'online', imdbId: currentOnlineImdbId, title: currentOnlineTitle, posterUrl: currentOnlinePoster, year: currentOnlineYear, embedUrl: document.getElementById('movieIframe').src }));
-                } else if (activeSyncMode === 'local' && streamflixPlayer && streamflixPlayer.src) { ws.send(JSON.stringify({ type: 'LOAD_VIDEO', mode: 'local', fileName: document.getElementById('sessionTitle').textContent })); }
+                if (activeSyncMode === 'online' && currentOnlineImdbId) {
+                    ws.send(JSON.stringify({
+                        type: 'LOAD_VIDEO',
+                        mode: 'online',
+                        imdbId: currentOnlineImdbId,
+                        title: currentOnlineTitle,
+                        posterUrl: currentOnlinePoster,
+                        year: currentOnlineYear,
+                        embedUrl: document.getElementById('movieIframe').src
+                    }));
+                } else if (activeSyncMode === 'local' && streamflixPlayer && streamflixPlayer.src) {
+                    ws.send(JSON.stringify({
+                        type: 'LOAD_VIDEO',
+                        mode: 'local',
+                        fileName: document.getElementById('sessionTitle').textContent
+                    }));
+                }
             }
             previousPeerCount = newPeers.length;
         }
         
         function connectWebSocket(onSuccess) { if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) { if (ws.readyState === WebSocket.OPEN && onSuccess) onSuccess(); return; } ws = new WebSocket(BACKEND_WS); ws.onopen = () => { if (onSuccess) onSuccess(); else if (currentRoomCode) { if (isHosting) ws.send(JSON.stringify({ type: 'HOST_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); else ws.send(JSON.stringify({ type: 'JOIN_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); } }; ws.onmessage = (event) => { const data = JSON.parse(event.data); if (data.type === 'ROOM_HOSTED_SUCCESS') { showToast("Room ready!"); showLiveChatFloatingUI(true); notifyParent('ROOM_OPENED', currentRoomCode); } else if (data.type === 'ROOM_JOIN_SUCCESS') { isHosting = false; currentRoomCode = data.code; localStorage.setItem('syncbeat_active_room', currentRoomCode); checkBackgroundRoomState(); document.getElementById('displayRoomCode').textContent = data.code; document.getElementById('sessionSubtitle').textContent = `Member: ${currentUserName}`; document.getElementById('sessionHeaderTitle').textContent = "Member Session"; updateLocalPeerDisplay('MEMBER'); applyRoleUI(); document.getElementById('mainLandingView').classList.add('hidden'); document.getElementById('hostSessionView').classList.remove('hidden'); showLiveChatFloatingUI(true); switchHostMode('online'); notifyParent('ROOM_OPENED', currentRoomCode); } else if (data.type === 'PEER_LIST') { handlePeerListUpdate(data.peers || []); } else if (data.type === 'NOTIFICATION') { showToast(data.message); } else handleIncomingControl(data); }; ws.onclose = () => { if (currentRoomCode && localStorage.getItem('syncbeat_active_room')) { setTimeout(() => connectWebSocket(), 3000); } }; }
-        function startHostingSession() { if (localStorage.getItem('syncbeat_active_room')) { showToast("Active room already running."); return; } currentUserName = getUserInputName(); currentRoomCode = 'SYNC-' + Math.random().toString(36).substring(2, 6).toUpperCase(); showToast("Creating room..."); connectWebSocket(() => { isHosting = true; ws.send(JSON.stringify({ type: 'HOST_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); ws.send(JSON.stringify({ type: 'CREATE_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); localStorage.setItem('syncbeat_active_room', currentRoomCode); checkBackgroundRoomState(); document.getElementById('displayRoomCode').textContent = currentRoomCode; document.getElementById('sessionSubtitle').textContent = `Host: ${currentUserName}`; document.getElementById('sessionHeaderTitle').textContent = "Host Session"; updateLocalPeerDisplay('HOST'); applyRoleUI(); switchHostMode('online'); document.getElementById('mainLandingView').classList.add('hidden'); document.getElementById('hostSessionView').classList.remove('hidden'); showLiveChatFloatingUI(true); notifyParent('ROOM_OPENED', currentRoomCode); }); }
-        function returnToHostingSession() { document.getElementById('mainLandingView').classList.add('hidden'); document.getElementById('hostSessionView').classList.remove('hidden'); showLiveChatFloatingUI(true); }
+        
+        function startHostingSession() { 
+            if (localStorage.getItem('syncbeat_active_room')) { showToast("Active room already running."); return; } 
+            currentUserName = getUserInputName(); 
+            currentRoomCode = 'SYNC-' + Math.random().toString(36).substring(2, 6).toUpperCase(); 
+            showToast("Creating room..."); 
+            connectWebSocket(() => { 
+                isHosting = true; 
+                ws.send(JSON.stringify({ type: 'HOST_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); 
+                ws.send(JSON.stringify({ type: 'CREATE_ROOM', code: currentRoomCode, name: currentUserName, accountId: currentAccountId })); 
+                localStorage.setItem('syncbeat_active_room', currentRoomCode); 
+                checkBackgroundRoomState(); 
+                document.getElementById('displayRoomCode').textContent = currentRoomCode; 
+                document.getElementById('sessionSubtitle').textContent = `Host: ${currentUserName}`; 
+                document.getElementById('sessionHeaderTitle').textContent = "Host Session"; 
+                updateLocalPeerDisplay('HOST'); 
+                applyRoleUI(); 
+                switchHostMode('online'); 
+                document.getElementById('mainLandingView').classList.add('hidden'); 
+                document.getElementById('hostSessionView').classList.remove('hidden'); 
+                showLiveChatFloatingUI(true); 
+                notifyParent('ROOM_OPENED', currentRoomCode); 
+            }); 
+        }
+        
+        function returnToHostingSession() { 
+            document.getElementById('mainLandingView').classList.add('hidden'); 
+            document.getElementById('hostSessionView').classList.remove('hidden'); 
+            showLiveChatFloatingUI(true); 
+        }
+        
         function connectToRoom() { if (localStorage.getItem('syncbeat_active_room')) { showToast("Active room already running."); return; } currentUserName = getUserInputName(); const code = document.getElementById('roomCodeInput').value.trim().toUpperCase(); if (code.length < 4) { showToast("Enter valid code."); return; } currentRoomCode = code; showToast("Connecting..."); connectWebSocket(() => ws.send(JSON.stringify({ type: 'JOIN_ROOM', code: code, name: currentUserName, accountId: currentAccountId }))); }
+        
         function copyCode() { navigator.clipboard.writeText(currentRoomCode); showToast("Copied!"); } function shareCode() { if (navigator.share) navigator.share({ title: 'Streamflix Room', text: currentRoomCode }); }
+        
         function closeRoomAndReturnHome() { if (isHosting && ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type: 'ROOM_CLOSED' })); } exitHostSession(true); clearChatBox(); showLiveChatFloatingUI(false); showToast("Left room."); notifyParent('ROOM_CLOSED'); }
+        
         function goBackToHome() { document.getElementById('hostSessionView').classList.add('hidden'); document.getElementById('mainLandingView').classList.remove('hidden'); checkBackgroundRoomState(); }
-        function exitHostSession(isPermanentClose = false) { stopLocalPlayer(); document.getElementById('sessionTitle').textContent = "No Movie Selected"; document.getElementById('sessionArtist').textContent = "Waiting for Host..."; document.getElementById('sessionPoster').src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='85'><rect width='60' height='85' fill='%23333'/></svg>"; document.getElementById('movieIframe').src = ""; currentRoomCode = ""; isHosting = false; if (isPermanentClose) localStorage.removeItem('syncbeat_active_room'); if (ws) { ws.close(); ws = null; } showLiveChatFloatingUI(false); document.getElementById('hostSessionView').classList.add('hidden'); document.getElementById('mainLandingView').classList.remove('hidden'); checkBackgroundRoomState(); document.getElementById('interactionOverlay').classList.add('hidden'); notifyParent('ROOM_CLOSED'); }
-        function clearChatBox() { document.getElementById('chatMessagesContainer').innerHTML = '<div style="color: #9ca3af; text-align: center; font-style: italic;">No messages yet. Say hello!</div>'; }
-        function sendReaction(emoji) { showFloatingReaction(emoji); if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'REACTION', emoji: emoji, name: `${currentUserName} (${currentAccountId})` })); }
-        function showFloatingReaction(emoji) { const el = document.createElement('div'); el.className = 'floating-reaction'; el.textContent = emoji; el.style.left = (Math.random() * (window.innerWidth - 60) + 20) + 'px'; document.body.appendChild(el); setTimeout(() => el.remove(), 2200); }
-        function showRoomPopup(senderName, content) { const container = document.getElementById('roomPopupContainer'); if (!container) return; const card = document.createElement('div'); card.className = 'room-popup-card'; card.innerHTML = `<div class="popup-sender">💬 ${escapeHtml(senderName)}:</div><div class="popup-content">${escapeHtml(content)}</div>`; container.appendChild(card); setTimeout(() => card.remove(), 3500); }
-        function escapeHtml(text) { const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }; return text.replace(/[&<>"']/g, m => map[m]); }
-        function toggleEmojiKeyboard() { document.getElementById('phoneEmojiKeyboardSection').classList.toggle('hidden'); } function switchEmojiCategory(e, categoryKey) { activeEmojiCategory = categoryKey; document.querySelectorAll('.kb-tab-btn').forEach(btn => btn.classList.remove('active')); if (e && e.currentTarget) e.currentTarget.classList.add('active'); renderEmojiGrid(); } function renderEmojiGrid() { const grid = document.getElementById('kbEmojiGrid'); if (!grid) return; grid.innerHTML = ''; (emojiCategories[activeEmojiCategory] || []).forEach(emoji => { const btn = document.createElement('button'); btn.className = 'emoji-key'; btn.textContent = emoji; btn.onclick = () => sendReaction(emoji); grid.appendChild(btn); }); }
-        function showLiveChatFloatingUI(show) { const container = document.getElementById('liveChatFloatingContainer'); if (container) { container.classList.toggle('hidden', !show); if (!show) { document.getElementById('liveChatWindow').classList.add('hidden'); document.getElementById('liveChatLauncherBtn').classList.remove('hidden'); } } }
+        
+        function exitHostSession(isPermanentClose = false) { 
+            stopLocalPlayer(); 
+            document.getElementById('sessionTitle').textContent = "No Movie Selected"; 
+            document.getElementById('sessionArtist').textContent = "Waiting for Host..."; 
+            document.getElementById('sessionPoster').src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='85'><rect width='60' height='85' fill='%23333'/></svg>"; 
+            document.getElementById('movieIframe').src = ""; 
+            currentRoomCode = ""; 
+            isHosting = false; 
+            if (isPermanentClose) localStorage.removeItem('syncbeat_active_room'); 
+            if (ws) { ws.close(); ws = null; } 
+            showLiveChatFloatingUI(false); 
+            document.getElementById('hostSessionView').classList.add('hidden'); 
+            document.getElementById('mainLandingView').classList.remove('hidden'); 
+            checkBackgroundRoomState(); 
+            document.getElementById('interactionOverlay').classList.add('hidden'); 
+            notifyParent('ROOM_CLOSED'); 
+        }
+        
         function initPermanentDeviceAccount() { let permanentId = localStorage.getItem('syncbeat_permanent_device_id'); if (!permanentId) { permanentId = 'SYNC-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase(); localStorage.setItem('syncbeat_permanent_device_id', permanentId); } currentAccountId = permanentId + '_' + Math.random().toString(36).substring(2, 6); currentUserName = localStorage.getItem('syncbeat_device_name') || ''; document.getElementById('userNameInput').value = currentUserName; document.getElementById('loggedAccountBadge').textContent = `ID: ${currentAccountId}`; document.getElementById('deviceAccountDisplay').textContent = `Permanent Device ID: ${currentAccountId}`; }
+        
         function autoSaveProfileName() { const nameInput = document.getElementById('userNameInput').value.trim(); if (nameInput) { currentUserName = nameInput; localStorage.setItem('syncbeat_device_name', currentUserName); } }
+        
         function saveProfileChanges() { autoSaveProfileName(); showToast("Profile saved!"); }
+        
         function resetDeviceProfile() { if (confirm("Reset permanent Device ID?")) { localStorage.removeItem('syncbeat_permanent_device_id'); localStorage.removeItem('syncbeat_device_name'); initPermanentDeviceAccount(); showToast("Profile reset!"); } }
+        
         function showToast(msg) { const toast = document.getElementById('toastModal'); toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
+        
         function getUserInputName() { autoSaveProfileName(); return currentUserName || "User"; }
+        
         function checkBackgroundRoomState() { const activeRoom = localStorage.getItem('syncbeat_active_room'); document.getElementById('returnHostingBanner').classList.toggle('hidden', !activeRoom); }
     </script>
 </body>

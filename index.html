@@ -12,7 +12,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body, html { width: 100vw; height: 100vh; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        /* Rigid Viewport Locking to prevent URL bar from sliding back down */
+        html, body {
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            overscroll-behavior: none;
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
         
         #slider { display: flex; width: 300vw; height: 100vh; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); will-change: transform; }
         .frame-wrapper { width: 100vw; height: 100vh; position: relative; }
@@ -29,7 +39,7 @@
             z-index: 10000; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
         }
 
-        /* Auto-Hide when music plays */
+        /* Auto-Hide when media plays */
         .tab-bar.hide { transform: translateX(-50%) translateY(120px); opacity: 0; pointer-events: none; }
 
         .indicator {

@@ -3,212 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SyncBeat Games</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.3/socket.io.min.js"></script>
+    <title>SyncBeat - Unified Hub</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body, html { width: 100vw; height: 100vh; background: #07070a; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; display: flex; flex-direction: column; }
-
-        .arcade-header { padding: 14px 20px; background: rgba(18,18,24,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; z-index: 10; }
-        .arcade-title { font-size: 14px; font-weight: 900; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
-
-        .arcade-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 80px; }
-
-        /* Lobby */
-        #gameSelectView { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; align-items: center; }
-        .game-banner { width: 100%; max-width: 400px; height: 160px; border-radius: 24px; position: relative; overflow: hidden; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); transition: transform 0.2s; }
-        .game-banner:active { transform: scale(0.96); }
-        .game-banner.ludo { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-        .game-banner.carrom { background: linear-gradient(135deg, #f59e0b, #b45309); }
-        .banner-content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); }
-        .banner-content i { font-size: 48px; margin-bottom: 10px; text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .banner-content span { font-size: 20px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-
-        /* Setup Modal */
-        #roomSetupModal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
-        .setup-card { background: #121218; width: 100%; max-width: 340px; border-radius: 24px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
-        .setup-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; color: #3b82f6; }
-        .input-glass { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px; font-size: 14px; color: #fff; outline: none; margin-bottom: 14px; text-align: center; }
-        .btn-row { display: flex; gap: 10px; }
-        .btn-glass { flex: 1; padding: 14px; border-radius: 12px; font-size: 13px; font-weight: 800; cursor: pointer; border: none; transition: 0.2s; }
-        .btn-host { background: #3b82f6; color: #fff; }
-        .btn-join { background: #22c55e; color: #fff; }
-        .btn-cancel { background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); margin-top: 10px; width: 100%; }
-
-        /* Active Arena */
-        #activeGameArena { flex: 1; display: none; flex-direction: column; height: 100%; position: relative; }
-        #activeGameArena.active { display: flex; }
+        html, body { position: fixed; width: 100vw; height: 100vh; overflow: hidden; overscroll-behavior: none; background: #000; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
         
-        .game-board-area { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
+        #slider { display: flex; width: 500vw; height: 100vh; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+        .frame-wrapper { width: 100vw; height: 100vh; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; background: #000; }
+
+        .tab-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 96%; max-width: 420px; height: 60px; background: rgba(18, 18, 22, 0.85); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 10000; transition: transform 0.4s ease, opacity 0.4s ease; }
+        .tab-bar.hide { transform: translateX(-50%) translateY(120px); opacity: 0; pointer-events: none; }
         
-        /* Pro WebGL Game Frame */
-        #proGameFrame { width: 100%; height: 100%; border: none; background: #121218; }
+        .indicator { position: absolute; top: 6px; bottom: 6px; width: calc(20% - 6px); left: 4px; background: rgba(239, 68, 68, 0.25); border-radius: 24px; transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1), background 0.3s ease; z-index: 1; }
+        
+        .tab-btn { flex: 1; height: 100%; border: none; background: transparent; color: rgba(255, 255, 255, 0.4); font-size: 9px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; z-index: 2; cursor: pointer; transition: color 0.3s ease; text-transform: uppercase; }
+        .tab-btn i { font-size: 16px; transition: transform 0.3s cubic-bezier(0.2, 2, 0.4, 1); }
+        .tab-btn.active { color: #fff; }
+        .tab-btn.active i { transform: translateY(-2px) scale(1.1); }
+        
+        #toast { position: fixed; top: 25px; left: 50%; transform: translateX(-50%) translateY(-120px); background: rgba(20, 8, 8, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(239, 68, 68, 0.6); color: #fecaca; padding: 12px 20px; border-radius: 20px; font-size: 12px; font-weight: 800; z-index: 100000; display: flex; align-items: center; gap: 8px; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+        #toast.show { transform: translateX(-50%) translateY(0); }
 
-        /* Live Chat & Emoji Drawer */
-        .social-drawer { height: 180px; background: rgba(14, 14, 18, 0.95); display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.08); z-index: 10; }
-        .emoji-bar { display: flex; gap: 12px; padding: 10px 14px; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .emoji-btn { font-size: 24px; background: transparent; border: none; cursor: pointer; transition: transform 0.2s; }
-        .emoji-btn:active { transform: scale(1.4); }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
-        .chat-msg { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 10px; max-width: 80%; word-break: break-word; }
-        .chat-msg.self { background: rgba(59, 130, 246, 0.25); align-self: flex-end; }
-        .chat-input-bar { padding: 8px 12px; display: flex; gap: 8px; background: rgba(0,0,0,0.3); }
-        .chat-input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 12px; color: #fff; font-size: 12px; outline: none; }
-        .chat-send { background: #3b82f6; border: none; color: #fff; padding: 0 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
-
-        /* Floating Emoji Overlay */
-        #emojiOverlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 20; }
-        .floating-emoji { position: absolute; bottom: 20px; font-size: 40px; animation: floatUp 2.2s ease-out forwards; opacity: 1; }
-        @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { transform: translateY(-40px) scale(1.2); opacity: 1; } 100% { transform: translateY(-300px) scale(1); opacity: 0; } }
+        #videoSplashOverlay { position: fixed; inset: 0; background: #000; z-index: 99999999; display: flex; align-items: center; justify-content: center; transition: opacity 0.6s ease, visibility 0.6s ease; }
+        #videoSplashOverlay.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+        #splashVideo { width: 100%; height: 100%; object-fit: cover; }
+        #skipSplashBtn { position: absolute; top: 40px; right: 20px; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); color: #fff; font-size: 11px; font-weight: 800; padding: 8px 16px; border-radius: 20px; cursor: pointer; z-index: 10; }
     </style>
 </head>
 <body>
 
-    <div class="arcade-header">
-        <div class="arcade-title" id="topHeaderTitle"><i class="fa-solid fa-gamepad"></i> SyncBeat Games</div>
-        <button id="leaveRoomBtn" style="display:none; background:#ef4444; border:none; color:#fff; padding:6px 12px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;" onclick="leaveGame()">Quit Match</button>
+    <div id="videoSplashOverlay">
+        <video id="splashVideo" autoplay muted playsinline><source src="intro.mp4" type="video/mp4"></video>
+        <button id="skipSplashBtn" onclick="dismissSplashScreen()">Skip</button>
     </div>
 
-    <div class="arcade-body">
-        <div id="gameSelectView">
-            <div class="game-banner ludo" onclick="openSetup('Ludo')">
-                <div class="banner-content"><i class="fa-solid fa-chess-board"></i><span>Play Ludo</span></div>
-            </div>
-            <div class="game-banner carrom" onclick="openSetup('Carrom')">
-                <div class="banner-content"><i class="fa-solid fa-bullseye"></i><span>Play Carrom</span></div>
-            </div>
-        </div>
+    <div id="toast"><i class="fa-solid fa-lock" style="color: #ef4444;"></i> <span id="toastMsg"></span></div>
 
-        <div id="activeGameArena">
-            <div class="game-board-area">
-                <div id="emojiOverlay"></div>
-                <iframe id="proGameFrame" src="" allowfullscreen allow="autoplay; fullscreen"></iframe>
-            </div>
-
-            <div class="social-drawer">
-                <div class="emoji-bar">
-                    <button class="emoji-btn" onclick="sendReaction('😂')">😂</button>
-                    <button class="emoji-btn" onclick="sendReaction('😡')">😡</button>
-                    <button class="emoji-btn" onclick="sendReaction('😎')">😎</button>
-                    <button class="emoji-btn" onclick="sendReaction('😭')">😭</button>
-                    <button class="emoji-btn" onclick="sendReaction('🔥')">🔥</button>
-                    <button class="emoji-btn" onclick="sendReaction('💖')">💖</button>
-                </div>
-                <div class="chat-messages" id="chatMessages"></div>
-                <div class="chat-input-bar">
-                    <input type="text" id="chatInput" class="chat-input" placeholder="Trash talk here..." onkeydown="if(event.key==='Enter') sendChatMessage()">
-                    <button class="chat-send" onclick="sendChatMessage()">Send</button>
-                </div>
-            </div>
-        </div>
+    <div id="slider">
+        <div class="frame-wrapper"><iframe src="./movies.html"></iframe></div>
+        <div class="frame-wrapper"><iframe src="./golden.html"></iframe></div>
+        <div class="frame-wrapper"><iframe src="./audio.html"></iframe></div>
+        <div class="frame-wrapper"><iframe src="./ludo.html"></iframe></div>
+        <div class="frame-wrapper"><iframe src="./carrom.html"></iframe></div>
     </div>
 
-    <div id="roomSetupModal">
-        <div class="setup-card">
-            <div class="setup-title" id="setupTitle">Setup Game</div>
-            <input type="text" id="roomCodeInput" class="input-glass" placeholder="Enter Code to Join">
-            <div class="btn-row">
-                <button class="btn-glass btn-host" onclick="startGame('host')">Host Match</button>
-                <button class="btn-glass btn-join" onclick="startGame('join')">Join Match</button>
-            </div>
-            <button class="btn-glass btn-cancel" onclick="closeSetup()">Cancel</button>
-        </div>
-    </div>
+    <nav class="tab-bar" id="tabBar">
+        <div class="indicator" id="indicator"></div>
+        <button class="tab-btn active" onclick="switchTab(0, '#ef4444')"><i class="fa-solid fa-film"></i><span>Movies</span></button>
+        <button class="tab-btn" onclick="switchTab(1, '#fbbf24')"><i class="fa-brands fa-youtube"></i><span>Golden</span></button>
+        <button class="tab-btn" onclick="switchTab(2, '#a855f7')"><i class="fa-solid fa-compact-disc"></i><span>Audio</span></button>
+        <button class="tab-btn" onclick="switchTab(3, '#ef4444')"><i class="fa-solid fa-chess-board"></i><span>Ludo</span></button>
+        <button class="tab-btn" onclick="switchTab(4, '#f59e0b')"><i class="fa-solid fa-bullseye"></i><span>Carrom</span></button>
+    </nav>
 
     <script>
-        const socket = io('https://your-backend-url.onrender.com'); 
-
-        let selectedGame = null;
-        let activeCode = null;
-        
-        const setupModal = document.getElementById('roomSetupModal');
-        const gameSelectView = document.getElementById('gameSelectView');
-        const activeGameArena = document.getElementById('activeGameArena');
-
-        function openSetup(gameName) {
-            selectedGame = gameName;
-            document.getElementById('setupTitle').innerText = `Play ${gameName}`;
-            document.getElementById('roomCodeInput').value = '';
-            setupModal.style.display = 'flex';
+        const splashOverlay = document.getElementById('videoSplashOverlay');
+        function dismissSplashScreen() {
+            splashOverlay.classList.add('fade-out');
+            setTimeout(() => splashOverlay.remove(), 650);
         }
+        setTimeout(dismissSplashScreen, 8000);
 
-        // Fixed: We no longer clear 'selectedGame' when closing the modal, fixing the NULL bug.
-        function closeSetup() { 
-            setupModal.style.display = 'none'; 
-        }
+        let activeRoomTab = null;
+        let activeRoomCode = null;
 
-        function startGame(type) {
-            let code = document.getElementById('roomCodeInput').value.trim();
-            if (type === 'host') {
-                code = selectedGame.toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000);
-            } else if (type === 'join' && !code) {
-                alert("Enter a room code to join!"); return;
+        window.addEventListener('message', (e) => {
+            if (e.data.sender !== 'syncbeat') return;
+            if (e.data.action === 'ROOM_OPENED') {
+                activeRoomTab = e.data.tab;
+                activeRoomCode = e.data.code;
+            } else if (e.data.action === 'ROOM_CLOSED') {
+                activeRoomTab = null;
+                activeRoomCode = null;
             }
-
-            activeCode = code;
-            socket.emit('join_room', activeCode);
-
-            gameSelectView.style.display = 'none';
-            activeGameArena.classList.add('active');
-            document.getElementById('leaveRoomBtn').style.display = 'block';
-            
-            // Fixed NULL bug by keeping selectedGame intact
-            document.getElementById('topHeaderTitle').innerHTML = `<i class="fa-solid fa-gamepad"></i> ${selectedGame} [${activeCode}]`;
-            document.getElementById('chatMessages').innerHTML = `<div class="chat-msg" style="color:#3b82f6;">System: Chat room [${activeCode}] connected.</div>`;
-
-            // Reliable, working WebGL links
-            const gameUrls = {
-                Ludo: 'https://www.crazygames.com/embed/ludo-hero',
-                Carrom: 'https://www.crazygames.com/embed/carrom-clash'
-            };
-            document.getElementById('proGameFrame').src = gameUrls[selectedGame];
-
-            closeSetup();
-            window.parent.postMessage({ sender: 'syncbeat', action: 'ROOM_OPENED', tab: 3, code: activeCode }, '*');
-        }
-
-        function leaveGame() {
-            activeCode = null;
-            document.getElementById('proGameFrame').src = '';
-            activeGameArena.classList.remove('active');
-            gameSelectView.style.display = 'flex';
-            document.getElementById('leaveRoomBtn').style.display = 'none';
-            document.getElementById('topHeaderTitle').innerHTML = `<i class="fa-solid fa-gamepad"></i> SyncBeat Games`;
-            window.parent.postMessage({ sender: 'syncbeat', action: 'ROOM_CLOSED' }, '*');
-        }
-
-        function sendChatMessage() {
-            const text = document.getElementById('chatInput').value.trim();
-            if (!text) return;
-            document.getElementById('chatMessages').innerHTML += `<div class="chat-msg self"><b>You:</b> ${text}</div>`;
-            socket.emit('send_chat', { room: activeCode, message: text });
-            document.getElementById('chatInput').value = '';
-            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
-        }
-
-        socket.on('receive_chat', (data) => {
-            const box = document.getElementById('chatMessages');
-            box.innerHTML += data.sys ? `<div class="chat-msg" style="color:#3b82f6;">System: ${data.msg}</div>` : `<div class="chat-msg"><b>Opponent:</b> ${data.msg}</div>`;
-            box.scrollTop = box.scrollHeight;
         });
 
-        function sendReaction(emoji) {
-            triggerEmojiAnimation(emoji);
-            socket.emit('send_emoji', { room: activeCode, emoji: emoji });
-        }
+        function switchTab(index, color) {
+            if (activeRoomTab !== null && activeRoomTab !== index) {
+                document.getElementById('toastMsg').textContent = `Active Room [${activeRoomCode}]. Close it first!`;
+                document.getElementById('toast').classList.add('show');
+                setTimeout(() => document.getElementById('toast').classList.remove('show'), 3500);
+                return;
+            }
 
-        socket.on('receive_emoji', (emoji) => triggerEmojiAnimation(emoji));
+            document.getElementById('slider').style.transform = `translateX(-${index * 100}vw)`;
+            const pos = ['4px', 'calc(20% + 1px)', 'calc(40% - 1px)', 'calc(60% - 3px)', 'calc(80% - 4px)'];
+            document.getElementById('indicator').style.left = pos[index];
+            document.getElementById('indicator').style.background = color + '40';
 
-        function triggerEmojiAnimation(emoji) {
-            const overlay = document.getElementById('emojiOverlay');
-            const el = document.createElement('div');
-            el.className = 'floating-emoji'; el.innerText = emoji;
-            el.style.left = Math.random() * 80 + '%';
-            overlay.appendChild(el);
-            setTimeout(() => el.remove(), 2200);
+            document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+                btn.style.color = i === index ? '#fff' : 'rgba(255,255,255,0.4)';
+            });
         }
     </script>
 </body>
 </html>
-

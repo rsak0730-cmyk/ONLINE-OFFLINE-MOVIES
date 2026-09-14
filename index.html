@@ -24,17 +24,17 @@
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }
         
-        #slider { display: flex; width: 300vw; height: 100vh; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); will-change: transform; }
+        #slider { display: flex; width: 400vw; height: 100vh; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); will-change: transform; }
         .frame-wrapper { width: 100vw; height: 100vh; position: relative; }
         iframe { width: 100%; height: 100%; border: none; background: #000; }
 
-        /* Smaller, App-Matched iOS Tab Bar */
+        /* 4-Tab iOS Glass Bar */
         .tab-bar {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(0);
-            width: 90%; max-width: 340px; height: 60px;
+            width: 92%; max-width: 380px; height: 60px;
             background: rgba(18, 18, 22, 0.85); backdrop-filter: blur(25px) saturate(200%); -webkit-backdrop-filter: blur(25px) saturate(200%);
             border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 30px;
-            display: flex; align-items: center; justify-content: space-between; padding: 0 6px;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 4px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.2);
             z-index: 10000; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
         }
@@ -43,22 +43,22 @@
         .tab-bar.hide { transform: translateX(-50%) translateY(120px); opacity: 0; pointer-events: none; }
 
         .indicator {
-            position: absolute; top: 6px; bottom: 6px; width: calc(33.333% - 8px); left: 6px;
+            position: absolute; top: 6px; bottom: 6px; width: calc(25% - 6px); left: 4px;
             background: rgba(239, 68, 68, 0.25); border-radius: 24px;
             transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1), background 0.3s ease; z-index: 1;
         }
 
         .tab-btn {
             flex: 1; height: 100%; border: none; background: transparent; color: rgba(255, 255, 255, 0.4);
-            font-size: 10px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+            font-size: 9px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
             z-index: 2; cursor: pointer; transition: color 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px; position: relative;
         }
 
-        .tab-btn i { font-size: 18px; transition: transform 0.3s cubic-bezier(0.2, 2, 0.4, 1); }
+        .tab-btn i { font-size: 16px; transition: transform 0.3s cubic-bezier(0.2, 2, 0.4, 1); }
         .tab-btn.active { color: #fff; }
         .tab-btn.active i { transform: translateY(-2px) scale(1.1); }
         
-        .tab-btn .lock { position: absolute; top: 6px; right: 18px; font-size: 9px; color: #ef4444; opacity: 0; transition: 0.3s ease; }
+        .tab-btn .lock { position: absolute; top: 6px; right: 12px; font-size: 8px; color: #ef4444; opacity: 0; transition: 0.3s ease; }
         .tab-bar.locked .tab-btn:not(.active) .lock { opacity: 1; }
         .tab-bar.locked { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 20px rgba(239, 68, 68, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2); }
 
@@ -133,12 +133,15 @@
 
     <div id="toast"><i class="fa-solid fa-lock" style="color: #ef4444;"></i> <span id="toastMsg"></span></div>
 
+    <!-- 4-Tab Slider Infrastructure -->
     <div id="slider">
         <div class="frame-wrapper"><iframe src="./movies.html" allow="autoplay; fullscreen"></iframe></div>
         <div class="frame-wrapper"><iframe src="./golden.html" allow="autoplay; fullscreen"></iframe></div>
         <div class="frame-wrapper"><iframe src="./audio.html" allow="autoplay; fullscreen"></iframe></div>
+        <div class="frame-wrapper"><iframe src="./games.html" allow="autoplay; fullscreen"></iframe></div>
     </div>
 
+    <!-- 4-Item iOS Liquid Glass Tab Bar -->
     <nav class="tab-bar" id="tabBar">
         <div class="indicator" id="indicator"></div>
         <button class="tab-btn active" onclick="switchTab(0, '#ef4444')">
@@ -149,6 +152,9 @@
         </button>
         <button class="tab-btn" onclick="switchTab(2, '#a855f7')">
             <i class="fa-solid fa-compact-disc"></i><span>Audio</span><i class="fa-solid fa-lock lock"></i>
+        </button>
+        <button class="tab-btn" onclick="switchTab(3, '#3b82f6')">
+            <i class="fa-solid fa-gamepad"></i><span>Games</span><i class="fa-solid fa-lock lock"></i>
         </button>
     </nav>
 
@@ -237,7 +243,7 @@
 
         function switchTab(index, color) {
             if (activeRoomTab !== null && activeRoomTab !== index) {
-                const names = ['Movies', 'Golden Room', 'Audio Sync'];
+                const names = ['Movies', 'Golden Room', 'Audio Sync', 'Games'];
                 document.getElementById('toastMsg').textContent = `Active Room in ${names[activeRoomTab]} (${activeRoomCode}). Close it first!`;
                 toast.classList.add('show');
                 tabBar.style.transform = 'translateX(-50%) scale(0.95)';
@@ -247,7 +253,7 @@
             }
 
             slider.style.transform = `translateX(-${index * 100}vw)`;
-            const pos = ['6px', 'calc(33.333% + 1px)', 'calc(66.666% - 4px)'];
+            const pos = ['4px', 'calc(25% + 2px)', 'calc(50% + 0px)', 'calc(75% - 2px)'];
             indicator.style.left = pos[index];
             indicator.style.background = color + '40';
 
@@ -259,4 +265,3 @@
     </script>
 </body>
 </html>
-

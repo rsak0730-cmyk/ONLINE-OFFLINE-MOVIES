@@ -2,3 +2,17 @@ node_modules/
 .DS_Store
 *.log
 .env
+
+# Android
+android/.gradle/
+android/local.properties
+android/.idea/
+android/**/build/
+android/*.iml
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+*.apk
+*.aab
+*.jks
+*.keystore

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SyncBeat" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@color/syncbeat_bg</item>
+        <item name="android:navigationBarColor">@color/syncbeat_bg</item>
+        <item name="android:windowBackground">@color/syncbeat_bg</item>
+        <item name="android:colorPrimary">@color/syncbeat_primary</item>
+    </style>
+    <style name="Theme.SyncBeat.Fullscreen" parent="Theme.SyncBeat">
+        <item name="android:windowFullscreen">true</item>
+    </style>
+</resources>

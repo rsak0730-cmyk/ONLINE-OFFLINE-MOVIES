@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SyncBeat</string>
+    <string name="home">Home</string>
+    <string name="movies">Movies</string>
+    <string name="library">Offline</string>
+    <string name="rooms">Rooms</string>
+    <string name="profile">Profile</string>
+    <string name="play_local">Play Local File</string>
+    <string name="online_hub">Online Hub</string>
+    <string name="watch_party">Watch Party</string>
+    <string name="no_videos">No local videos found.\nTap + to add movies from your device.</string>
+    <string name="syncbeat_tagline">Watch together. Play offline. Stream free.</string>
+</resources>

@@ -22,8 +22,16 @@ android {
     }
 
     buildTypes {
+        debug {
+            isMinifyEnabled = false
+            applicationIdSuffix = ""
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = false
+            // Sign with debug key so CI APK is installable without a private keystore.
+            // Replace with your own release keystore for Play Store later.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

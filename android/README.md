@@ -57,3 +57,14 @@ android/app/src/main/java/com/syncbeat/app/
 │   ├── screens/                  ← Home, Movies, Library, Rooms, Profile
 │   └── theme/                    ← AppThemes (14), Theme, Type
 ```
+
+## Build APK without Android Studio
+
+Use GitHub Actions — see root file `HOW_TO_GET_APK.md`.
+
+Workflow: `.github/workflows/build-apk.yml`
+
+```bash
+# Local equivalent (if you have SDK):
+./gradlew assembleDebug assembleRelease
+```

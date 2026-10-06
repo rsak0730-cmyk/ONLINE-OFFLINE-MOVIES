@@ -9,7 +9,7 @@ The APK is built automatically by **GitHub Actions**.
 3. Open the latest **Build SyncBeat APK** workflow run (green check ✅)
 4. Scroll to **Artifacts**
 5. Download **SyncBeat-APK**
-6. Unzip → install `SyncBeat-v2.0.0-debug.apk` or `SyncBeat-v2.0.0-release.apk` on your phone
+6. Unzip → install `SyncBeat-v2.1.0-debug.apk` or `SyncBeat-v2.1.0-release.apk` on your phone
 
 ## Manual re-build
 

@@ -92,10 +92,10 @@ jobs:
         run: |
           mkdir -p dist
           if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
-            cp app/build/outputs/apk/debug/app-debug.apk dist/SyncBeat-v2.0.0-debug.apk
+            cp app/build/outputs/apk/debug/app-debug.apk dist/SyncBeat-v2.1.0-debug.apk
           fi
           if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-            cp app/build/outputs/apk/release/app-release.apk dist/SyncBeat-v2.0.0-release.apk
+            cp app/build/outputs/apk/release/app-release.apk dist/SyncBeat-v2.1.0-release.apk
           fi
           # Any other apk names
           for f in app/build/outputs/apk/*/*.apk; do

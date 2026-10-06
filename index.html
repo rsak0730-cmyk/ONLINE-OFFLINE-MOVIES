@@ -11,112 +11,93 @@
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* LOOK redesign only — hub chrome neumorphism; all JS/functions unchanged */
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        
-        /* Rigid Viewport Locking to prevent URL bar from sliding back down */
         html, body {
             position: fixed;
             width: 100vw;
             height: 100vh;
             overflow: hidden;
             overscroll-behavior: none;
-            background: #000;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #E8EDF5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
-        
         #slider { display: flex; width: 300vw; height: 100vh; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); will-change: transform; }
         .frame-wrapper { width: 100vw; height: 100vh; position: relative; }
-        iframe { width: 100%; height: 100%; border: none; background: #000; }
+        iframe { width: 100%; height: 100%; border: none; background: #E8EDF5; }
 
-        /* Smaller, App-Matched iOS Tab Bar */
         .tab-bar {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(0);
-            width: 90%; max-width: 340px; height: 60px;
-            background: rgba(18, 18, 22, 0.85); backdrop-filter: blur(25px) saturate(200%); -webkit-backdrop-filter: blur(25px) saturate(200%);
-            border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 30px;
-            display: flex; align-items: center; justify-content: space-between; padding: 0 6px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.2);
-            z-index: 10000; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+            position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(0);
+            width: 90%; max-width: 360px; height: 64px;
+            background: #EEF2F8;
+            border: none;
+            border-radius: 28px;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 8px;
+            box-shadow:
+                10px 10px 24px #A3B1C6,
+                -10px -10px 24px #FFFFFF,
+                inset 1px 1px 0 rgba(255,255,255,0.7);
+            z-index: 10000;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
         }
-
-        /* Auto-Hide when media plays */
         .tab-bar.hide { transform: translateX(-50%) translateY(120px); opacity: 0; pointer-events: none; }
 
         .indicator {
-            position: absolute; top: 6px; bottom: 6px; width: calc(33.333% - 8px); left: 6px;
-            background: rgba(239, 68, 68, 0.25); border-radius: 24px;
-            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1), background 0.3s ease; z-index: 1;
+            position: absolute; top: 7px; bottom: 7px; width: calc(33.333% - 10px); left: 8px;
+            background: linear-gradient(145deg, #6C63FF, #5548E0);
+            border-radius: 22px;
+            box-shadow: 4px 4px 12px rgba(108,99,255,0.35);
+            transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1), background 0.3s ease;
+            z-index: 1;
         }
 
         .tab-btn {
-            flex: 1; height: 100%; border: none; background: transparent; color: rgba(255, 255, 255, 0.4);
-            font-size: 10px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-            z-index: 2; cursor: pointer; transition: color 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px; position: relative;
+            flex: 1; height: 100%; border: none; background: transparent;
+            color: #7F8C8D;
+            font-size: 10px; font-weight: 800;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+            z-index: 2; cursor: pointer; transition: color 0.3s ease;
+            text-transform: uppercase; letter-spacing: 0.5px; position: relative;
+        }
+        .tab-btn i { font-size: 18px; transition: transform 0.3s cubic-bezier(0.2, 2, 0.4, 1); }
+        .tab-btn.active { color: #fff !important; }
+        .tab-btn.active i { transform: translateY(-2px) scale(1.1); }
+        .tab-btn .lock { position: absolute; top: 6px; right: 18px; font-size: 9px; color: #6C63FF; opacity: 0; transition: 0.3s ease; }
+        .tab-bar.locked .tab-btn:not(.active) .lock { opacity: 1; }
+        .tab-bar.locked {
+            box-shadow:
+                10px 10px 24px #A3B1C6,
+                -10px -10px 24px #FFFFFF,
+                0 0 0 2px rgba(108,99,255,0.35);
         }
 
-        .tab-btn i { font-size: 18px; transition: transform 0.3s cubic-bezier(0.2, 2, 0.4, 1); }
-        .tab-btn.active { color: #fff; }
-        .tab-btn.active i { transform: translateY(-2px) scale(1.1); }
-        
-        .tab-btn .lock { position: absolute; top: 6px; right: 18px; font-size: 9px; color: #ef4444; opacity: 0; transition: 0.3s ease; }
-        .tab-bar.locked .tab-btn:not(.active) .lock { opacity: 1; }
-        .tab-bar.locked { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 20px rgba(239, 68, 68, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2); }
-
-        /* Lock Toast */
         #toast {
-            position: fixed; top: 25px; left: 50%; transform: translateX(-50%) translateY(-120px);
-            background: rgba(20, 8, 8, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(239, 68, 68, 0.6);
-            color: #fecaca; padding: 12px 20px; border-radius: 20px; font-size: 12px; font-weight: 800;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; gap: 8px;
+            position: fixed; top: 28px; left: 50%; transform: translateX(-50%) translateY(-120px);
+            background: #EEF2F8;
+            color: #2D3436;
+            padding: 12px 20px; border-radius: 20px; font-size: 12px; font-weight: 800;
+            box-shadow: 8px 8px 20px #A3B1C6, -8px -8px 20px #FFFFFF;
+            z-index: 100000; display: flex; align-items: center; gap: 8px;
             transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); pointer-events: none; text-align: center;
         }
         #toast.show { transform: translateX(-50%) translateY(0); }
 
-        /* Animated Splash Overlay */
         #videoSplashOverlay {
-            position: fixed;
-            inset: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: #000000;
-            z-index: 99999999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+            position: fixed; inset: 0; width: 100vw; height: 100vh;
+            background-color: #E8EDF5; z-index: 99999999;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
             transition: opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.6s ease;
         }
-
-        #videoSplashOverlay.fade-out {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
-
-        #splashVideo {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background: #000;
-        }
-
+        #videoSplashOverlay.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+        #splashVideo { width: 100%; height: 100%; object-fit: cover; background: #E8EDF5; }
         #skipSplashBtn {
-            position: absolute;
-            top: 40px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            z-index: 10;
+            position: absolute; top: 40px; right: 20px;
+            background: #EEF2F8;
+            border: none;
+            color: #2D3436;
+            font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            padding: 10px 18px; border-radius: 20px; cursor: pointer; z-index: 10;
+            box-shadow: 6px 6px 14px #A3B1C6, -6px -6px 14px #FFFFFF;
         }
     </style>
 </head>
@@ -131,7 +112,7 @@
         <button id="skipSplashBtn" onclick="dismissSplashScreen()">Skip</button>
     </div>
 
-    <div id="toast"><i class="fa-solid fa-lock" style="color: #ef4444;"></i> <span id="toastMsg"></span></div>
+    <div id="toast"><i class="fa-solid fa-lock" style="color: #6C63FF;"></i> <span id="toastMsg"></span></div>
 
     <div id="slider">
         <div class="frame-wrapper"><iframe src="./movies.html" allow="autoplay; fullscreen"></iframe></div>
@@ -141,13 +122,13 @@
 
     <nav class="tab-bar" id="tabBar">
         <div class="indicator" id="indicator"></div>
-        <button class="tab-btn active" onclick="switchTab(0, '#ef4444')">
+        <button class="tab-btn active" onclick="switchTab(0, '#6C63FF')">
             <i class="fa-solid fa-film"></i><span>Movies</span><i class="fa-solid fa-lock lock"></i>
         </button>
-        <button class="tab-btn" onclick="switchTab(1, '#fbbf24')">
+        <button class="tab-btn" onclick="switchTab(1, '#00C9A7')">
             <i class="fa-brands fa-youtube"></i><span>Golden</span><i class="fa-solid fa-lock lock"></i>
         </button>
-        <button class="tab-btn" onclick="switchTab(2, '#a855f7')">
+        <button class="tab-btn" onclick="switchTab(2, '#9B8CFF')">
             <i class="fa-solid fa-compact-disc"></i><span>Audio</span><i class="fa-solid fa-lock lock"></i>
         </button>
     </nav>

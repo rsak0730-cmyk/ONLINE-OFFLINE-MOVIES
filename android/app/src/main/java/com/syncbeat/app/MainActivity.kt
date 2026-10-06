@@ -39,11 +39,11 @@ import androidx.navigation.compose.rememberNavController
 import com.syncbeat.app.data.ThemeManager
 import com.syncbeat.app.navigation.Screen
 import com.syncbeat.app.navigation.bottomNavItems
-import com.syncbeat.app.ui.screens.HomeScreen
+import com.syncbeat.app.ui.screens.GoldenScreen
 import com.syncbeat.app.ui.screens.LibraryScreen
 import com.syncbeat.app.ui.screens.MoviesScreen
+import com.syncbeat.app.ui.screens.MusicScreen
 import com.syncbeat.app.ui.screens.ProfileScreen
-import com.syncbeat.app.ui.screens.RoomsScreen
 import com.syncbeat.app.ui.theme.AppThemes
 import com.syncbeat.app.ui.theme.LocalAppTheme
 import com.syncbeat.app.ui.theme.SyncBeatTheme
@@ -111,10 +111,7 @@ fun SyncBeatApp(onThemeSelected: (String) -> Unit) {
                                 )
                             },
                             label = {
-                                Text(
-                                    text = screen.title,
-                                    fontSize = 11.sp
-                                )
+                                Text(text = screen.title, fontSize = 11.sp)
                             },
                             selected = selected,
                             onClick = {
@@ -141,13 +138,13 @@ fun SyncBeatApp(onThemeSelected: (String) -> Unit) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = Screen.Movies.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Home.route) { HomeScreen() }
             composable(Screen.Movies.route) { MoviesScreen() }
+            composable(Screen.Golden.route) { GoldenScreen() }
+            composable(Screen.Music.route) { MusicScreen() }
             composable(Screen.Library.route) { LibraryScreen() }
-            composable(Screen.Rooms.route) { RoomsScreen() }
             composable(Screen.Profile.route) {
                 ProfileScreen(onThemeSelected = onThemeSelected)
             }

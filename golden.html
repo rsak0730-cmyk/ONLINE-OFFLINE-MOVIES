@@ -72,7 +72,33 @@
         .badge { font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; }
         .badge-host { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.4); }
         .badge-member { background: rgba(217, 119, 6, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.4); }
+    
+        /* App standalone mode: no hub tab padding / no attached tab chrome */
+        body.syncbeat-app, html.syncbeat-app body {
+          padding-bottom: 16px !important;
+        }
+        body.syncbeat-app .tab-bar,
+        body.syncbeat-app #tabBar { display: none !important; }
+
     </style>
+
+    <script>
+      (function(){
+        try {
+          var q = new URLSearchParams(location.search);
+          if (q.get('app') === '1') {
+            document.documentElement.classList.add('syncbeat-app');
+            document.addEventListener('DOMContentLoaded', function(){
+              document.body.classList.add('syncbeat-app');
+              document.body.style.paddingBottom = '16px';
+              var bar = document.getElementById('tabBar');
+              if (bar) bar.remove();
+              document.querySelectorAll('.tab-bar').forEach(function(el){ el.remove(); });
+            });
+          }
+        } catch(e) {}
+      })();
+    </script>
 </head>
 <body>
     <div id="interactionOverlay" class="hidden">

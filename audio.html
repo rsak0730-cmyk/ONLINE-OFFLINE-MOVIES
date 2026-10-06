@@ -26,7 +26,33 @@
         .anim-bar-1 { animation: eq-1 1.1s ease-in-out infinite; } .anim-bar-2 { animation: eq-2 1.3s ease-in-out infinite; } .anim-bar-3 { animation: eq-3 1.0s ease-in-out infinite; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: rgb(var(--color-accent)); cursor: pointer; box-shadow: 0 4px 10px rgb(var(--color-shadow) / 0.8), inset 0 -3px 0 rgb(var(--color-border) / 0.8); transition: all 0.2s; }
         input[type=range]:disabled::-webkit-slider-thumb { background: rgb(var(--color-border)); cursor: not-allowed; box-shadow: none; }
+    
+        /* App standalone mode: no hub tab padding / no attached tab chrome */
+        body.syncbeat-app, html.syncbeat-app body {
+          padding-bottom: 16px !important;
+        }
+        body.syncbeat-app .tab-bar,
+        body.syncbeat-app #tabBar { display: none !important; }
+
     </style>
+
+    <script>
+      (function(){
+        try {
+          var q = new URLSearchParams(location.search);
+          if (q.get('app') === '1') {
+            document.documentElement.classList.add('syncbeat-app');
+            document.addEventListener('DOMContentLoaded', function(){
+              document.body.classList.add('syncbeat-app');
+              document.body.style.paddingBottom = '16px';
+              var bar = document.getElementById('tabBar');
+              if (bar) bar.remove();
+              document.querySelectorAll('.tab-bar').forEach(function(el){ el.remove(); });
+            });
+          }
+        } catch(e) {}
+      })();
+    </script>
 </head>
 <body class="bg-themeBg text-themeText min-h-screen flex flex-col font-sans select-none overflow-x-hidden sparkle-bg">
 

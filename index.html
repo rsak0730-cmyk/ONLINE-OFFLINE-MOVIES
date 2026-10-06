@@ -99,7 +99,31 @@
             padding: 10px 18px; border-radius: 20px; cursor: pointer; z-index: 10;
             box-shadow: 6px 6px 14px #A3B1C6, -6px -6px 14px #FFFFFF;
         }
+    
+        /* App mode: hide hub tab interface (Android owns bottom nav) */
+        body.syncbeat-app .tab-bar,
+        html.syncbeat-app .tab-bar,
+        body.syncbeat-app #tabBar,
+        .syncbeat-app #tabBar { display: none !important; visibility: hidden !important; height: 0 !important; }
+        body.syncbeat-app { background: #E8EDF5; }
+
     </style>
+
+    <script>
+      (function(){
+        try {
+          var q = new URLSearchParams(location.search);
+          if (q.get('app') === '1' || /SyncBeat|\bapp=1\b/i.test(location.href)) {
+            document.documentElement.classList.add('syncbeat-app');
+            document.addEventListener('DOMContentLoaded', function(){
+              document.body.classList.add('syncbeat-app');
+              var bar = document.getElementById('tabBar');
+              if (bar) bar.remove();
+            });
+          }
+        } catch(e) {}
+      })();
+    </script>
 </head>
 <body>
 

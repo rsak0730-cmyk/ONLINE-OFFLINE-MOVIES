@@ -336,7 +336,33 @@
         [style*="background: #ef4444"], [style*="background:#ef4444"] {
             background: linear-gradient(145deg, var(--primary), var(--primary-dark)) !important;
         }
+    
+        /* App standalone mode: no hub tab padding / no attached tab chrome */
+        body.syncbeat-app, html.syncbeat-app body {
+          padding-bottom: 16px !important;
+        }
+        body.syncbeat-app .tab-bar,
+        body.syncbeat-app #tabBar { display: none !important; }
+
     </style>
+
+    <script>
+      (function(){
+        try {
+          var q = new URLSearchParams(location.search);
+          if (q.get('app') === '1') {
+            document.documentElement.classList.add('syncbeat-app');
+            document.addEventListener('DOMContentLoaded', function(){
+              document.body.classList.add('syncbeat-app');
+              document.body.style.paddingBottom = '16px';
+              var bar = document.getElementById('tabBar');
+              if (bar) bar.remove();
+              document.querySelectorAll('.tab-bar').forEach(function(el){ el.remove(); });
+            });
+          }
+        } catch(e) {}
+      })();
+    </script>
 </head>
 <body>
     <div id="interactionOverlay" class="hidden" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.92); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; text-align:center;">

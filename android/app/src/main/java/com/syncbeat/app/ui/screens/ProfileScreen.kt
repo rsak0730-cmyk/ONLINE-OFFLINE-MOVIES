@@ -85,7 +85,7 @@ fun ProfileScreen(onThemeSelected: (String) -> Unit) {
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "v2.1.0 · Neumorphism Edition",
+                text = "v2.2.0 · Neumorphism Edition",
                 color = theme.primary,
                 fontWeight = FontWeight.Medium,
                 fontSize = 12.sp

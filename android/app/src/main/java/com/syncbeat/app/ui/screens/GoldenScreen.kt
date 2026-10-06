@@ -5,8 +5,8 @@ import com.syncbeat.app.ui.components.WebRoomScreen
 
 private const val BASE = "https://rsak0730-cmyk.github.io/ONLINE-OFFLINE-MOVIES"
 
-/** Movie Room tab — movies.html only (no hub tabs) */
+/** Golden Room tab — golden.html only (no hub tabs) */
 @Composable
-fun MoviesScreen() {
-    WebRoomScreen(pageUrl = "$BASE/movies.html")
+fun GoldenScreen() {
+    WebRoomScreen(pageUrl = "$BASE/golden.html")
 }

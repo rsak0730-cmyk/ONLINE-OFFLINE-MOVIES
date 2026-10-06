@@ -1,40 +1,65 @@
 package com.syncbeat.app.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-val SyncBeatBg = Color(0xFF07070A)
-val SyncBeatSurface = Color(0xFF121218)
-val SyncBeatPrimary = Color(0xFF7C4DFF)
-val SyncBeatSecondary = Color(0xFF00E5FF)
-val SyncBeatOnBg = Color(0xFFFFFFFF)
-val SyncBeatMuted = Color(0xFF9E9E9E)
-val SyncBeatCard = Color(0xFF1A1A24)
+val LocalAppTheme = staticCompositionLocalOf { AppThemes.NeumorphismLight }
 
-private val DarkColorScheme = darkColorScheme(
-    primary = SyncBeatPrimary,
-    secondary = SyncBeatSecondary,
-    background = SyncBeatBg,
-    surface = SyncBeatSurface,
-    onPrimary = Color.White,
-    onSecondary = Color.Black,
-    onBackground = SyncBeatOnBg,
-    onSurface = SyncBeatOnBg,
-    surfaceVariant = SyncBeatCard,
-    onSurfaceVariant = SyncBeatMuted
-)
+object SyncBeatThemeColors {
+    val current: AppThemeColors
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalAppTheme.current
+}
 
 @Composable
 fun SyncBeatTheme(
-    darkTheme: Boolean = true, // always dark for this app
+    theme: AppThemeColors = AppThemes.NeumorphismLight,
     content: @Composable () -> Unit
 ) {
-    MaterialTheme(
-        colorScheme = DarkColorScheme,
-        typography = Typography,
-        content = content
-    )
+    val colorScheme = if (theme.isDark) {
+        darkColorScheme(
+            primary = theme.primary,
+            secondary = theme.secondary,
+            background = theme.background,
+            surface = theme.surface,
+            onPrimary = theme.onPrimary,
+            onSecondary = theme.onPrimary,
+            onBackground = theme.onBackground,
+            onSurface = theme.onSurface,
+            surfaceVariant = theme.surfaceElevated,
+            onSurfaceVariant = theme.muted,
+            outline = theme.border,
+            error = theme.error
+        )
+    } else {
+        lightColorScheme(
+            primary = theme.primary,
+            secondary = theme.secondary,
+            background = theme.background,
+            surface = theme.surface,
+            onPrimary = theme.onPrimary,
+            onSecondary = theme.onPrimary,
+            onBackground = theme.onBackground,
+            onSurface = theme.onSurface,
+            surfaceVariant = theme.surfaceElevated,
+            onSurfaceVariant = theme.muted,
+            outline = theme.border,
+            error = theme.error
+        )
+    }
+
+    CompositionLocalProvider(LocalAppTheme provides theme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

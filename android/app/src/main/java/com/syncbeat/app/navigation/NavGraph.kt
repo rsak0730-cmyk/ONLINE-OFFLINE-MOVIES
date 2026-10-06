@@ -1,15 +1,15 @@
 package com.syncbeat.app.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.ui.graphics.vector.ImageVector
 

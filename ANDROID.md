@@ -1,7 +1,12 @@
-# Android App
+# Android App (v2.0)
 
-A full native Android project lives in the **`android/`** folder.
+Full native project lives in **`android/`**.
 
-Open `android/` in Android Studio to build and run the SyncBeat app (online hub + offline video player).
+**v2.0 Neumorphism Edition**
+- Main theme: Neumorphism
+- 14 real themes + live changer (Profile tab)
+- Modern UI/buttons — all original features kept
 
-See `android/README.md` for details.
+Open `android/` in Android Studio → Sync → Run.
+
+See `android/README.md` for full details.

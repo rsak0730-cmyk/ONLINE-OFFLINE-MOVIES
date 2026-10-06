@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="syncbeat_bg">#07070A</color>
-    <color name="syncbeat_surface">#121218</color>
-    <color name="syncbeat_primary">#7C4DFF</color>
-    <color name="syncbeat_secondary">#00E5FF</color>
-    <color name="syncbeat_on_bg">#FFFFFF</color>
-    <color name="syncbeat_muted">#9E9E9E</color>
+    <color name="syncbeat_bg">#E0E5EC</color>
+    <color name="syncbeat_surface">#E0E5EC</color>
+    <color name="syncbeat_primary">#6C63FF</color>
+    <color name="syncbeat_secondary">#00C9A7</color>
+    <color name="syncbeat_on_bg">#2D3436</color>
+    <color name="syncbeat_muted">#7F8C8D</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

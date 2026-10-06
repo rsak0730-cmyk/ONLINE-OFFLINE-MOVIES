@@ -11,4 +11,6 @@
     <string name="watch_party">Watch Party</string>
     <string name="no_videos">No local videos found.\nTap + to add movies from your device.</string>
     <string name="syncbeat_tagline">Watch together. Play offline. Stream free.</string>
+    <string name="themes">Themes</string>
+    <string name="current_theme">Current theme</string>
 </resources>

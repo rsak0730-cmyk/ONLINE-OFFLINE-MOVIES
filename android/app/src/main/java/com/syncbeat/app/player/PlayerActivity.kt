@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,6 +21,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.syncbeat.app.data.ThemeManager
+import com.syncbeat.app.ui.theme.AppThemes
 import com.syncbeat.app.ui.theme.SyncBeatTheme
 
 class PlayerActivity : ComponentActivity() {
@@ -40,7 +44,11 @@ class PlayerActivity : ComponentActivity() {
         val title = intent.getStringExtra(EXTRA_TITLE) ?: "Video"
 
         setContent {
-            SyncBeatTheme {
+            val context = LocalContext.current
+            val themeManager = remember { ThemeManager(context) }
+            val theme by themeManager.themeFlow.collectAsState(initial = AppThemes.NeumorphismLight)
+
+            SyncBeatTheme(theme = theme) {
                 VideoPlayerScreen(uri = Uri.parse(uriString), title = title)
             }
         }

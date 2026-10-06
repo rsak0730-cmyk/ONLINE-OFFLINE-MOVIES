@@ -1,61 +1,59 @@
-# SyncBeat Android App
+# SyncBeat Android — v2.0 Neumorphism Edition
 
-**Online + Offline Movies** — Hybrid native Android app for the SyncBeat platform.
+Modern hybrid Android app for **ONLINE-OFFLINE-MOVIES / SyncBeat**.
 
-## Features
+## What's new in v2.0
+- **Neumorphism** as the main default theme (soft raised UI, dual shadows)
+- **14 real themes** with live theme changer (persisted via DataStore)
+- Modern buttons, cards, bottom nav, empty states
+- All original features preserved
 
-- 🌐 **Online Hub** – Full SyncBeat PWA (movies, watch parties, rooms) via WebView
-- 🎬 **Movies** – Dedicated movies page
-- 📁 **Offline Library** – Pick any video from your device & play with ExoPlayer (Media3)
-- 👥 **Rooms** – Watch party / multi-device sync
-- 🎨 Dark Material 3 UI matching the SyncBeat brand (`#07070A`)
+## Features (unchanged + enhanced)
+| Tab | Feature |
+|-----|---------|
+| **Home** | Online SyncBeat hub (WebView) |
+| **Movies** | movies.html online catalog |
+| **Offline** | Local file picker + **ExoPlayer** playback |
+| **Rooms** | Watch party / multi-device sync hub |
+| **Profile** | About + **14-theme switcher** |
 
-## Tech Stack
+## Themes (14)
+1. **Neumorphism** (MAIN default)
+2. Neumorphism Dark
+3. Soft Clay
+4. Ocean Breeze
+5. Ice Crystal
+6. Warm Sand
+7. Rose Gold
+8. Forest Mist
+9. Midnight AMOLED
+10. Sunset Glow
+11. Purple Haze
+12. Cyber Neon
+13. Emerald Night
+14. High Contrast
 
-- Kotlin
-- Jetpack Compose + Material 3
-- Navigation Compose
-- Media3 ExoPlayer (offline player)
-- AndroidX WebView / WebKit
-- Min SDK 26 / Target SDK 35
+## Tech
+- Kotlin · Jetpack Compose · Material 3
+- Media3 ExoPlayer · WebView · DataStore Preferences
+- Package: `com.syncbeat.app`
+- Min SDK 26 · Target 35 · Version 2.0.0
 
-## How to open & build
+## Open & run
+1. Open the **`android/`** folder in Android Studio
+2. Gradle sync
+3. Run on device / emulator
+4. Profile → Themes → tap any swatch to switch (saved automatically)
 
-1. Clone this repository
-2. Open the `android/` folder in **Android Studio** (Hedgehog or newer recommended)
-3. Let Gradle sync
-4. Run on emulator or physical device
-
+## Project structure
 ```
-android/
-├── app/
-│   ├── src/main/java/com/syncbeat/app/
-│   │   ├── MainActivity.kt
-│   │   ├── navigation/
-│   │   ├── player/          ← ExoPlayer offline player
-│   │   └── ui/screens/      ← Home, Movies, Library, Rooms, Profile
-│   └── build.gradle.kts
-├── build.gradle.kts
-└── settings.gradle.kts
+android/app/src/main/java/com/syncbeat/app/
+├── MainActivity.kt
+├── data/ThemeManager.kt
+├── navigation/
+├── player/PlayerActivity.kt      ← offline ExoPlayer
+├── ui/
+│   ├── components/Neumorphic.kt  ← NeuButton, NeuCard, …
+│   ├── screens/                  ← Home, Movies, Library, Rooms, Profile
+│   └── theme/                    ← AppThemes (14), Theme, Type
 ```
-
-## Package
-
-`com.syncbeat.app`
-
-## Notes
-
-- The Online / Movies / Rooms tabs load your existing GitHub Pages PWA:
-  `https://rsak0730-cmyk.github.io/ONLINE-OFFLINE-MOVIES/`
-- Offline Library works fully without internet.
-- Update the URLs in `HomeScreen.kt`, `MoviesScreen.kt`, `RoomsScreen.kt` if you change hosting.
-
-## Asset Links
-
-If you publish this app, update `assetlinks.json` on the website with the new package name and your signing certificate SHA-256.
-
-```
-package_name: com.syncbeat.app
-```
-
-Made for the SyncBeat / ONLINE-OFFLINE-MOVIES project.

@@ -40,25 +40,25 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            android/*.gradle*
+            android/gradle/wrapper/gradle-wrapper.properties
+            android/app/*.gradle*
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Do NOT include obsolete "tools" package (removed from SDK)
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
 
       - name: Accept Android licenses
-        run: yes | sdkmanager --licenses >/dev/null || true
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" || true
 
       - name: Make gradlew executable
         run: chmod +x gradlew
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
 
       - name: Determine build flags
         id: flags
@@ -97,9 +97,15 @@ jobs:
           if [ -f app/build/outputs/apk/release/app-release.apk ]; then
             cp app/build/outputs/apk/release/app-release.apk dist/SyncBeat-v2.0.0-release.apk
           fi
-          # fallback names
-          find app/build/outputs/apk -name '*.apk' -print
-          ls -lah dist/ || true
+          # Any other apk names
+          for f in app/build/outputs/apk/*/*.apk; do
+            [ -f "$f" ] || continue
+            base=$(basename "$f")
+            if [ ! -f "dist/$base" ] && [[ "$base" != app-debug.apk && "$base" != app-release.apk ]]; then
+              cp "$f" "dist/$base"
+            fi
+          done
+          ls -lah dist/
 
       - name: Upload SyncBeat APKs
         uses: actions/upload-artifact@v4
